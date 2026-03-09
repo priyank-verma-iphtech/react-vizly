@@ -1,0 +1,35 @@
+{
+  "name": "react-vizly",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Custom React chart library",
+  "main": "dist/react-vizly.js",
+  "module": "dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "node tests/test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/priyank-verma-iphtech/react-vizly.git"
+  },
+  "keywords": [
+    "charts",
+    "react",
+    "visualization"
+  ],
+  "author": "Priyank Verma",
+  "license": "ISC",
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.1.4",
+    "vite": "^4.5.14"
+  }
+}
