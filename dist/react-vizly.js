@@ -1,65 +1,75 @@
-import { jsxs as d, Fragment as x, jsx as o } from "react/jsx-runtime";
-import { forwardRef as v, useRef as u, useState as w, useImperativeHandle as C, useEffect as b } from "react";
-import m from "apexcharts";
-const j = (t) => {
-  if (!Array.isArray(t) || t.length === 0)
+import { jsxs as h, Fragment as w, jsx as i } from "react/jsx-runtime";
+import { forwardRef as x, useRef as u, useState as z, useImperativeHandle as C, useEffect as p } from "react";
+import v from "apexcharts";
+const I = (n) => {
+  if (!Array.isArray(n) || n.length === 0)
     return "bar";
-  const e = t[0];
-  return typeof e == "number" ? t.length <= 5 ? "donut" : t.length <= 10 ? "bar" : "area" : typeof e == "object" && "x" in e && "y" in e && typeof e.y == "number" ? "line" : typeof e == "object" && "x" in e && "y" in e && Array.isArray(e.y) ? "scatter" : typeof e == "object" && "x" in e && "y" in e && "z" in e ? "bubble" : typeof e == "object" && "x" in e && "y" in e && typeof e.y == "number" ? "heatmap" : typeof e == "object" && "label" in e && "value" in e ? "treemap" : typeof e == "object" && "value" in e && t.length === 1 ? "radialBar" : "bar";
-}, S = v(
-  ({ data: t, options: e, height: h = 350 }, g) => {
-    const l = u(null), s = u(null), i = u(null), c = u(null), [f, a] = w(!1), y = j(t), p = (r) => ({
+  const e = n[0];
+  return typeof e == "number" ? n.length <= 5 ? "donut" : n.length <= 10 ? "bar" : "area" : (e == null ? void 0 : e.x) !== void 0 && (e == null ? void 0 : e.y) !== void 0 && (e == null ? void 0 : e.z) !== void 0 ? "bubble" : (e == null ? void 0 : e.x) !== void 0 && (e == null ? void 0 : e.y) !== void 0 && Array.isArray(e.y) ? "scatter" : (e == null ? void 0 : e.x) !== void 0 && (e == null ? void 0 : e.y) !== void 0 ? "line" : "label" in e && "value" in e ? "treemap" : "value" in e && n.length === 1 ? "radialBar" : "bar";
+}, R = x(
+  ({ data: n, options: e, height: f = 350 }, g) => {
+    const l = u(null), c = u(null), o = u(null), s = u(null), [a, d] = z(!1), b = I(n), y = (r, t) => t === "pie" || t === "donut" || t === "radialBar" ? r : t === "bubble" || t === "scatter" ? [{ data: r }] : t === "treemap" ? [{ data: r }] : [{ data: r }], m = (r) => ({
       chart: {
-        type: y,
+        type: b,
         height: r,
         zoom: { enabled: !0 },
-        toolbar: { show: !0 }
+        toolbar: {
+          show: !0,
+          tools: {
+            download: !0,
+            zoom: !0,
+            zoomin: !0,
+            zoomout: !0,
+            pan: !0,
+            reset: !0
+          }
+        }
       },
-      series: y === "donut" || y === "pie" ? t : [{ data: t }],
+      series: y(n, b),
       ...e
     });
     return C(g, () => ({
       zoomIn: () => {
         var r;
-        (r = i.current) == null || r.zoomX(0, 100);
+        (r = o.current) == null || r.zoomX(10, 50);
       },
       zoomOut: () => {
         var r;
-        (r = i.current) == null || r.resetSeries();
+        (r = o.current) == null || r.resetSeries();
       },
       filter: (r) => {
-        var n;
-        (n = i.current) == null || n.updateSeries([{ data: r }]);
+        var t;
+        (t = o.current) == null || t.updateSeries([{ data: r }]);
       },
       reset: () => {
         var r;
-        (r = i.current) == null || r.resetSeries();
+        (r = o.current) == null || r.resetSeries();
       },
       fullView: () => {
-        a(!0);
+        d(!0);
       }
-    })), b(() => {
+    })), p(() => {
       if (!l.current)
         return;
-      const r = p(h);
-      return i.current = new m(l.current, r), i.current.render(), () => {
-        var n;
-        (n = i.current) == null || n.destroy();
+      const r = m(f);
+      return o.current = new v(l.current, r), o.current.render(), () => {
+        var t;
+        (t = o.current) == null || t.destroy();
       };
-    }, [t, h, e]), b(() => {
-      if (!f || !s.current)
+    }, [n, f, e]), p(() => {
+      if (!a || !c.current)
         return;
-      const r = p("80vh");
-      return c.current = new m(
-        s.current,
+      const r = m("80vh");
+      return s.current = new v(
+        c.current,
         r
-      ), c.current.render(), () => {
-        var n;
-        (n = c.current) == null || n.destroy();
+      ), s.current.render(), () => {
+        var t;
+        (t = s.current) == null || t.destroy();
       };
-    }, [f]), /* @__PURE__ */ d(x, { children: [
-      /* @__PURE__ */ d("div", { style: { position: "relative" }, children: [
-        /* @__PURE__ */ o(
+    }, [a]), /* @__PURE__ */ h(w, { children: [
+      /* @__PURE__ */ h("div", { style: { position: "relative" }, children: [
+        /* @__PURE__ */ i(
           "button",
           {
             style: {
@@ -68,13 +78,13 @@ const j = (t) => {
               top: 10,
               zIndex: 10
             },
-            onClick: () => a(!0),
+            onClick: () => d(!0),
             children: "Full View"
           }
         ),
-        /* @__PURE__ */ o("div", { ref: l })
+        /* @__PURE__ */ i("div", { ref: l })
       ] }),
-      f && /* @__PURE__ */ o(
+      a && /* @__PURE__ */ i(
         "div",
         {
           style: {
@@ -89,7 +99,7 @@ const j = (t) => {
             alignItems: "center",
             zIndex: 1e3
           },
-          children: /* @__PURE__ */ d(
+          children: /* @__PURE__ */ h(
             "div",
             {
               style: {
@@ -100,10 +110,10 @@ const j = (t) => {
                 position: "relative"
               },
               children: [
-                /* @__PURE__ */ o(
+                /* @__PURE__ */ i(
                   "button",
                   {
-                    onClick: () => a(!1),
+                    onClick: () => d(!1),
                     style: {
                       position: "absolute",
                       right: 20,
@@ -112,7 +122,7 @@ const j = (t) => {
                     children: "Close"
                   }
                 ),
-                /* @__PURE__ */ o("div", { ref: s })
+                /* @__PURE__ */ i("div", { ref: c })
               ]
             }
           )
@@ -122,5 +132,5 @@ const j = (t) => {
   }
 );
 export {
-  S as VizlyChart
+  R as VizlyChart
 };
