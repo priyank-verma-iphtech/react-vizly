@@ -14,15 +14,17 @@ export default defineConfig({
       name: 'ReactVizly',
       fileName: 'react-vizly',
     },
-    rollupOptions: {
-      external: ['react', 'react-dom', 'apexcharts'],
-      output: {
-        globals: {
-          react: 'React',
-          'react-dom': 'ReactDOM',
-          apexcharts: 'ApexCharts',
-        },
+   // ... inside rollupOptions
+   rollupOptions: {
+    // Keep react external so we don't have duplicate instances
+    external: ['react', 'react-dom'], 
+    output: {
+      globals: {
+        react: 'React',
+        'react-dom': 'ReactDOM',
+        // Remove apexcharts from here
       },
     },
+  },
   },
 });
