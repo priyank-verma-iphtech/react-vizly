@@ -1,35 +1,38 @@
 {
   "name": "react-vizly",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
-  "description": "Custom React chart library",
-  "main": "dist/react-vizly.js",
-  "module": "dist/index.js",
+  "description": "Custom React chart library using ApexCharts",
+  "main": "./dist/react-vizly.umd.cjs",
+  "module": "./dist/react-vizly.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/react-vizly.js",
+      "require": "./dist/react-vizly.umd.cjs"
+    }
+  },
   "files": [
     "dist"
   ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "node tests/test.js"
+    "preview": "vite preview"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/priyank-verma-iphtech/react-vizly.git"
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
   },
-  "keywords": [
-    "charts",
-    "react",
-    "visualization"
-  ],
-  "author": "Priyank Verma",
-  "license": "ISC",
   "dependencies": {
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "apexcharts": "^4.0.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^5.1.4",
-    "vite": "^4.5.14"
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^4.5.0",
+    "vite-plugin-dts": "^3.9.1"
   }
 }
