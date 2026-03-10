@@ -34,23 +34,47 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
 
     const inferredType = detectChartType(data);
 
+    const buildSeries = (data: any[], type: string) => {
+
+      if (type === "pie" || type === "donut" || type === "radialBar") {
+        return data;
+      }
+    
+      if (type === "bubble" || type === "scatter") {
+        return [{ data }];
+      }
+    
+      if (type === "treemap") {
+        return [{ data }];
+      }
+    
+      return [{ data }];
+    };
+
     const buildConfig = (chartHeight: number | string) => ({
       chart: {
         type: inferredType,
         height: chartHeight,
         zoom: { enabled: true },
-        toolbar: { show: true }
+        toolbar: {
+          show: true,
+          tools: {
+            download: true,
+            zoom: true,
+            zoomin: true,
+            zoomout: true,
+            pan: true,
+            reset: true
+          }
+        }
       },
-      series:
-        inferredType === "donut" || inferredType === "pie"
-          ? data
-          : [{ data }],
+      series: buildSeries(data, inferredType),
       ...options
     });
 
     useImperativeHandle(ref, () => ({
       zoomIn: () => {
-        chartInstance.current?.zoomX(0, 100);
+        chartInstance.current?.zoomX(10, 50);
       },
 
       zoomOut: () => {

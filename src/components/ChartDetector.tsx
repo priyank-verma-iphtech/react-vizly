@@ -16,70 +16,37 @@ export const detectChartType = (
       return "bar";
     }
   
-    const firstItem = data[0];
+    const first = data[0];
   
-    // simple numeric array
-    if (typeof firstItem === "number") {
+    // numeric dataset
+    if (typeof first === "number") {
       if (data.length <= 5) return "donut";
       if (data.length <= 10) return "bar";
       return "area";
     }
   
-    // XY dataset → line chart
-    if (
-      typeof firstItem === "object" &&
-      "x" in firstItem &&
-      "y" in firstItem &&
-      typeof firstItem.y === "number"
-    ) {
-      return "line";
-    }
-  
-    // scatter dataset
-    if (
-      typeof firstItem === "object" &&
-      "x" in firstItem &&
-      "y" in firstItem &&
-      Array.isArray(firstItem.y)
-    ) {
-      return "scatter";
-    }
-  
-    // bubble dataset
-    if (
-      typeof firstItem === "object" &&
-      "x" in firstItem &&
-      "y" in firstItem &&
-      "z" in firstItem
-    ) {
+    // bubble
+    if (first?.x !== undefined && first?.y !== undefined && first?.z !== undefined) {
       return "bubble";
     }
   
-    // heatmap dataset
-    if (
-      typeof firstItem === "object" &&
-      "x" in firstItem &&
-      "y" in firstItem &&
-      typeof firstItem.y === "number"
-    ) {
-      return "heatmap";
+    // scatter
+    if (first?.x !== undefined && first?.y !== undefined && Array.isArray(first.y)) {
+      return "scatter";
     }
   
-    // treemap dataset
-    if (
-      typeof firstItem === "object" &&
-      "label" in firstItem &&
-      "value" in firstItem
-    ) {
+    // line / time series
+    if (first?.x !== undefined && first?.y !== undefined) {
+      return "line";
+    }
+  
+    // treemap
+    if ("label" in first && "value" in first) {
       return "treemap";
     }
   
-    // radial bar dataset
-    if (
-      typeof firstItem === "object" &&
-      "value" in firstItem &&
-      data.length === 1
-    ) {
+    // radial bar
+    if ("value" in first && data.length === 1) {
       return "radialBar";
     }
   
