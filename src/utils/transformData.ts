@@ -1,65 +1,55 @@
-import { extractSeries } from "./extractSeries"
+import { chartEngine } from "./chartEngine"
 
 export const transformData = (type: string, data: any[]) => {
 
-  if (!data.length) return { series: [] }
+  const engine = chartEngine[type] || "xy"
 
-  const keys = Object.keys(data[0])
+  let series: any = []
+  let labels: string[] = []
+  let categories: string[] = []
 
-  // MULTI SERIES
-  if (keys.length > 2) {
+  switch (engine) {
 
-    const { series, categories } = extractSeries(data)
+    case "circular":
 
-    return {
-      series,
-      categories
-    }
+      series = data.map(d => d.y ?? d.value ?? d)
+      labels = data.map(d => d.x ?? d.label)
 
-  }
+      break
 
-  // DONUT / PIE
-  if (["donut","pie","radialbar"].includes(type)) {
+    case "category":
 
-    return {
-      series: data.map(d => d.y ?? d.value ?? d),
-      labels: data.map(d => d.x ?? d.label)
-    }
+      categories = data.map(d => d.x)
 
-  }
-
-  // BAR / COLUMN / RADAR
-  if (["bar","column","radar"].includes(type)) {
-
-    return {
-      series: [{
-        name:"Series 1",
-        data:data.map(d=>d.y)
-      }],
-      categories:data.map(d=>d.x)
-    }
-
-  }
-
-  // HEATMAP
-  if(type==="heatmap"){
-
-    return{
-      series:[{
-        name:"Series 1",
-        data:data.map(d=>({x:d.x,y:d.y}))
+      series = [{
+        name: "Series 1",
+        data: data.map(d => d.y)
       }]
-    }
 
+      break
+
+    case "heatmap":
+
+      series = [{
+        name: "Series 1",
+        data: data.map(d => ({ x: d.x, y: d.y }))
+      }]
+
+      break
+
+    case "range":
+
+      series = [{ data }]
+
+      break
+
+    default:
+
+      series = [{
+        name: "Series 1",
+        data: data.map(d => ({ x: d.x, y: d.y }))
+      }]
   }
 
-  // DEFAULT (line / area)
-
-  return{
-    series:[{
-      name:"Series 1",
-      data:data.map(d=>({x:d.x,y:d.y}))
-    }]
-  }
-
+  return { series, labels, categories }
 }

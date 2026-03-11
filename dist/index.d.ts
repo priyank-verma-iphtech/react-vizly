@@ -7,14 +7,12 @@ export declare interface VizlyProps {
     type?: string;
     options?: any;
     height?: number | string;
-    title?: string;
 }
 
 export declare interface VizlyRef {
     zoomIn: () => void;
     zoomOut: () => void;
     reset: () => void;
-    download: (format: "png" | "csv" | "svg") => void;
 }
 
 export { }
