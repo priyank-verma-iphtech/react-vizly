@@ -1,4 +1,4 @@
-import React, {
+import React,{
   useEffect,
   useRef,
   useImperativeHandle,
@@ -23,167 +23,183 @@ export interface VizlyRef {
 }
 
 const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
-  ({ data, options, height = 350 }, ref) => {
-    const chartRef = useRef<HTMLDivElement>(null);
-    const modalChartRef = useRef<HTMLDivElement>(null);
+({ data, options = {}, height = 350 }, ref) => {
 
-    const chartInstance = useRef<ApexCharts | null>(null);
-    const modalChartInstance = useRef<ApexCharts | null>(null);
+const chartRef = useRef<HTMLDivElement>(null);
+const modalChartRef = useRef<HTMLDivElement>(null);
 
-    const [showModal, setShowModal] = useState(false);
+const chartInstance = useRef<ApexCharts | null>(null);
+const modalChartInstance = useRef<ApexCharts | null>(null);
 
-    const inferredType = detectChartType(data);
+const [showModal,setShowModal] = useState(false);
 
-    const buildSeries = (data: any[], type: string) => {
+const inferredType = detectChartType(data);
 
-      if (type === "pie" || type === "donut" || type === "radialBar") {
-        return data;
-      }
-    
-      if (type === "bubble" || type === "scatter") {
-        return [{ data }];
-      }
-    
-      if (type === "treemap") {
-        return [{ data }];
-      }
-    
-      return [{ data }];
-    };
+const buildSeries = (data:any[], type:string) => {
 
-    const buildConfig = (chartHeight: number | string) => ({
-      chart: {
-        type: inferredType,
-        height: chartHeight,
-        zoom: { enabled: true },
-        toolbar: {
-          show: true,
-          tools: {
-            download: true,
-            zoom: true,
-            zoomin: true,
-            zoomout: true,
-            pan: true,
-            reset: true
-          }
-        }
-      },
-      series: buildSeries(data, inferredType),
-      ...options
-    });
+if(type === "pie" || type === "donut" || type === "radialBar"){
+return data;
+}
 
-    useImperativeHandle(ref, () => ({
-      zoomIn: () => {
-        chartInstance.current?.zoomX(10, 50);
-      },
+return [{ data }];
 
-      zoomOut: () => {
-        chartInstance.current?.resetSeries();
-      },
+};
 
-      filter: (newData: any[]) => {
-        chartInstance.current?.updateSeries([{ data: newData }]);
-      },
+const buildConfig = (chartHeight:number|string) => {
 
-      reset: () => {
-        chartInstance.current?.resetSeries();
-      },
+return {
+chart:{
+type: inferredType,
+height: chartHeight,
+zoom:{ enabled:true },
+toolbar:{
+show:true,
+tools:{
+download:true,
+zoom:true,
+zoomin:true,
+zoomout:true,
+pan:true,
+reset:true
+}
+}
+},
 
-      fullView: () => {
-        setShowModal(true);
-      }
-    }));
+series: buildSeries(data,inferredType),
 
-    useEffect(() => {
-      if (!chartRef.current) return;
+...options
+};
 
-      const config = buildConfig(height);
+};
 
-      chartInstance.current = new ApexCharts(chartRef.current, config);
-      chartInstance.current.render();
+useImperativeHandle(ref,()=>({
 
-      return () => {
-        chartInstance.current?.destroy();
-      };
-    }, [data, height, options]);
+zoomIn(){
+chartInstance.current?.zoomX(10,50);
+},
 
-    useEffect(() => {
-      if (!showModal || !modalChartRef.current) return;
+zoomOut(){
+chartInstance.current?.resetSeries();
+},
 
-      const config = buildConfig("80vh");
+filter(newData:any[]){
+chartInstance.current?.updateSeries([{ data:newData }]);
+},
 
-      modalChartInstance.current = new ApexCharts(
-        modalChartRef.current,
-        config
-      );
+reset(){
+chartInstance.current?.resetSeries();
+},
 
-      modalChartInstance.current.render();
+fullView(){
+setShowModal(true);
+}
 
-      return () => {
-        modalChartInstance.current?.destroy();
-      };
-    }, [showModal]);
+}));
 
-    return (
-      <>
-        <div style={{ position: "relative" }}>
-          <button
-            style={{
-              position: "absolute",
-              right: 10,
-              top: 10,
-              zIndex: 10
-            }}
-            onClick={() => setShowModal(true)}
-          >
-            Full View
-          </button>
+useEffect(()=>{
 
-          <div ref={chartRef} />
-        </div>
+if(!chartRef.current) return;
 
-        {showModal && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              background: "rgba(0,0,0,0.6)",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              zIndex: 1000
-            }}
-          >
-            <div
-              style={{
-                width: "90%",
-                height: "90%",
-                background: "#fff",
-                padding: 20,
-                position: "relative"
-              }}
-            >
-              <button
-                onClick={() => setShowModal(false)}
-                style={{
-                  position: "absolute",
-                  right: 20,
-                  top: 20
-                }}
-              >
-                Close
-              </button>
+const config = buildConfig(height);
 
-              <div ref={modalChartRef} />
-            </div>
-          </div>
-        )}
-      </>
-    );
-  }
+chartInstance.current = new ApexCharts(chartRef.current,config);
+chartInstance.current.render();
+
+return ()=>{
+chartInstance.current?.destroy();
+};
+
+},[data,height,options]);
+
+useEffect(()=>{
+
+if(!showModal || !modalChartRef.current) return;
+
+const config = buildConfig("80vh");
+
+modalChartInstance.current =
+new ApexCharts(modalChartRef.current,config);
+
+modalChartInstance.current.render();
+
+return ()=>{
+modalChartInstance.current?.destroy();
+};
+
+},[showModal,data]);
+
+return(
+
+<>
+
+<div style={{position:"relative"}}>
+
+<button
+style={{
+position:"absolute",
+right:10,
+top:10,
+zIndex:10
+}}
+onClick={()=>setShowModal(true)}
+>
+Full View
+</button>
+
+<div ref={chartRef} />
+
+</div>
+
+{showModal && (
+
+<div
+style={{
+position:"fixed",
+top:0,
+left:0,
+width:"100%",
+height:"100%",
+background:"rgba(0,0,0,0.6)",
+display:"flex",
+justifyContent:"center",
+alignItems:"center",
+zIndex:1000
+}}
+>
+
+<div
+style={{
+width:"90%",
+height:"90%",
+background:"#fff",
+padding:20,
+position:"relative"
+}}
+>
+
+<button
+onClick={()=>setShowModal(false)}
+style={{
+position:"absolute",
+right:20,
+top:20
+}}
+>
+Close
+</button>
+
+<div ref={modalChartRef} />
+
+</div>
+
+</div>
+
+)}
+
+</>
+
 );
+
+});
 
 export default VizlyChart;
