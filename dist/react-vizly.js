@@ -1,21 +1,21 @@
 import { jsxs as x, jsx as s } from "react/jsx-runtime";
-import g, { forwardRef as E, useRef as C, useState as N, useMemo as _, useCallback as A, useImperativeHandle as T, useEffect as L } from "react";
+import g, { forwardRef as B, useRef as O, useState as E, useMemo as _, useCallback as A, useImperativeHandle as T, useEffect as L } from "react";
 import z from "apexcharts";
-var R = {
+var N = {
   color: void 0,
   size: void 0,
   className: void 0,
   style: void 0,
   attr: void 0
-}, I = g.createContext && /* @__PURE__ */ g.createContext(R), X = ["attr", "size", "title"];
+}, I = g.createContext && /* @__PURE__ */ g.createContext(N), X = ["attr", "size", "title"];
 function V(e, n) {
   if (e == null)
     return {};
   var r, l, f = W(e, n);
   if (Object.getOwnPropertySymbols) {
-    var u = Object.getOwnPropertySymbols(e);
-    for (l = 0; l < u.length; l++)
-      r = u[l], n.indexOf(r) === -1 && {}.propertyIsEnumerable.call(e, r) && (f[r] = e[r]);
+    var d = Object.getOwnPropertySymbols(e);
+    for (l = 0; l < d.length; l++)
+      r = d[l], n.indexOf(r) === -1 && {}.propertyIsEnumerable.call(e, r) && (f[r] = e[r]);
   }
   return f;
 }
@@ -31,15 +31,15 @@ function W(e, n) {
     }
   return r;
 }
-function O() {
-  return O = Object.assign ? Object.assign.bind() : function(e) {
+function j() {
+  return j = Object.assign ? Object.assign.bind() : function(e) {
     for (var n = 1; n < arguments.length; n++) {
       var r = arguments[n];
       for (var l in r)
         ({}).hasOwnProperty.call(r, l) && (e[l] = r[l]);
     }
     return e;
-  }, O.apply(null, arguments);
+  }, j.apply(null, arguments);
 }
 function M(e, n) {
   var r = Object.keys(e);
@@ -51,25 +51,25 @@ function M(e, n) {
   }
   return r;
 }
-function j(e) {
+function S(e) {
   for (var n = 1; n < arguments.length; n++) {
     var r = arguments[n] != null ? arguments[n] : {};
     n % 2 ? M(Object(r), !0).forEach(function(l) {
-      D(e, l, r[l]);
+      F(e, l, r[l]);
     }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(r)) : M(Object(r)).forEach(function(l) {
       Object.defineProperty(e, l, Object.getOwnPropertyDescriptor(r, l));
     });
   }
   return e;
 }
-function D(e, n, r) {
-  return (n = F(n)) in e ? Object.defineProperty(e, n, { value: r, enumerable: !0, configurable: !0, writable: !0 }) : e[n] = r, e;
+function F(e, n, r) {
+  return (n = H(n)) in e ? Object.defineProperty(e, n, { value: r, enumerable: !0, configurable: !0, writable: !0 }) : e[n] = r, e;
 }
-function F(e) {
-  var n = H(e, "string");
+function H(e) {
+  var n = D(e, "string");
   return typeof n == "symbol" ? n : n + "";
 }
-function H(e, n) {
+function D(e, n) {
   if (typeof e != "object" || !e)
     return e;
   var r = e[Symbol.toPrimitive];
@@ -81,38 +81,38 @@ function H(e, n) {
   }
   return (n === "string" ? String : Number)(e);
 }
-function B(e) {
-  return e && e.map((n, r) => /* @__PURE__ */ g.createElement(n.tag, j({
+function R(e) {
+  return e && e.map((n, r) => /* @__PURE__ */ g.createElement(n.tag, S({
     key: r
-  }, n.attr), B(n.child)));
+  }, n.attr), R(n.child)));
 }
 function y(e) {
-  return (n) => /* @__PURE__ */ g.createElement(K, O({
-    attr: j({}, e.attr)
-  }, n), B(e.child));
+  return (n) => /* @__PURE__ */ g.createElement(K, j({
+    attr: S({}, e.attr)
+  }, n), R(e.child));
 }
 function K(e) {
   var n = (r) => {
     var {
       attr: l,
       size: f,
-      title: u
-    } = e, p = V(e, X), h = f || r.size || "1em", i;
-    return r.className && (i = r.className), e.className && (i = (i ? i + " " : "") + e.className), /* @__PURE__ */ g.createElement("svg", O({
+      title: d
+    } = e, p = V(e, X), h = f || r.size || "1em", o;
+    return r.className && (o = r.className), e.className && (o = (o ? o + " " : "") + e.className), /* @__PURE__ */ g.createElement("svg", j({
       stroke: "currentColor",
       fill: "currentColor",
       strokeWidth: "0"
     }, r.attr, l, p, {
-      className: i,
-      style: j(j({
+      className: o,
+      style: S(S({
         color: e.color || r.color
       }, r.style), e.style),
       height: h,
       width: h,
       xmlns: "http://www.w3.org/2000/svg"
-    }), u && /* @__PURE__ */ g.createElement("title", null, u), e.children);
+    }), d && /* @__PURE__ */ g.createElement("title", null, d), e.children);
   };
-  return I !== void 0 ? /* @__PURE__ */ g.createElement(I.Consumer, null, (r) => n(r)) : n(R);
+  return I !== void 0 ? /* @__PURE__ */ g.createElement(I.Consumer, null, (r) => n(r)) : n(N);
 }
 function q(e) {
   return y({ tag: "svg", attr: { viewBox: "0 0 24 24" }, child: [{ tag: "g", attr: { id: "Zoom_Out" }, child: [{ tag: "path", attr: { d: "M16.279,17.039c-1.396,1.209 -3.216,1.941 -5.206,1.941c-4.393,0 -7.96,-3.567 -7.96,-7.96c-0,-4.393 3.567,-7.96 7.96,-7.96c4.393,0 7.96,3.567 7.96,7.96c-0,2.044 -0.772,3.909 -2.04,5.319l0.165,0.165c1.194,1.194 2.388,2.388 3.583,3.582c0.455,0.456 -0.252,1.163 -0.707,0.708l-3.755,-3.755Zm1.754,-6.019c-0,-3.841 -3.119,-6.96 -6.96,-6.96c-3.842,0 -6.96,3.119 -6.96,6.96c-0,3.841 3.118,6.96 6.96,6.96c3.841,0 6.96,-3.119 6.96,-6.96Zm-4.96,-0.5c0.645,0 0.643,1 -0,1l-4,0c-0.645,0 -0.643,-1 -0,-1l4,0Z" }, child: [] }] }] })(e);
@@ -132,96 +132,92 @@ function U(e) {
 function Y(e) {
   return y({ tag: "svg", attr: { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, child: [{ tag: "path", attr: { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }, child: [] }, { tag: "polyline", attr: { points: "7 10 12 15 17 10" }, child: [] }, { tag: "line", attr: { x1: "12", y1: "15", x2: "12", y2: "3" }, child: [] }] })(e);
 }
-const se = E(
-  ({ data: e, type: n, options: r = {}, height: l = 350, title: f = "Data Visualization" }, u) => {
-    const p = C(null), h = C(null), i = C(null), w = C(null), [S, P] = N(!1), Z = _(() => {
+const se = B(
+  ({ data: e, type: n, options: r = {}, height: l = 350, title: f = "Data Visualization" }, d) => {
+    const p = O(null), h = O(null), o = O(null), w = O(null), [k, P] = E(!1), Z = _(() => {
       if (n)
         return n;
       if (!e || e.length === 0)
         return "bar";
       const t = e[0];
       return typeof t == "number" ? "donut" : t != null && t.x && Array.isArray(t == null ? void 0 : t.y) ? "rangeBar" : t != null && t.x && typeof (t == null ? void 0 : t.x) == "string" ? "bar" : "line";
-    }, [e, n]), b = A((t, o) => {
-      const a = Z.toLowerCase();
-      let d = [], m = [], k = [];
-      return ["pie", "donut", "radialbar"].includes(a) ? (d = t.map((c) => c.y ?? c.value ?? c), m = t.map((c) => c.x ?? c.label ?? "")) : a === "heatmap" ? d = [
-        {
-          name: "Series 1",
-          data: t.map((c) => ({
-            x: c.x,
-            y: c.y
-          }))
-        }
-      ] : ["bar", "column", "radar"].includes(a) ? (d = [
-        {
-          name: (r == null ? void 0 : r.seriesName) || "Series 1",
-          data: t.map((c) => c.y ?? c)
-        }
-      ], k = t.map((c) => c.x ?? "")) : d = [
-        {
-          name: (r == null ? void 0 : r.seriesName) || "Series 1",
-          data: t.map((c) => ({
-            x: c.x,
-            y: c.y
-          }))
-        }
-      ], {
+    }, [e, n]), b = A((t, c) => {
+      const i = Z.toLowerCase();
+      let u = [], m = [], C = [];
+      return ["donut", "pie", "radialbar"].includes(i) ? (u = t.map((a) => a.y ?? a.value ?? a), m = t.map((a) => a.x ?? a.label ?? "")) : ["bar", "column"].includes(i) ? (C = t.map((a) => a.x ?? ""), u = [{
+        name: (r == null ? void 0 : r.seriesName) || "Series 1",
+        data: t.map((a) => a.y ?? a)
+      }]) : i === "radar" ? (C = t.map((a) => a.x ?? ""), u = [{
+        name: (r == null ? void 0 : r.seriesName) || "Series 1",
+        data: t.map((a) => a.y ?? a)
+      }]) : i === "heatmap" ? u = [{
+        name: "Series 1",
+        data: t.map((a) => ({
+          x: a.x,
+          y: a.y
+        }))
+      }] : u = [{
+        name: (r == null ? void 0 : r.seriesName) || "Series 1",
+        data: t.map((a) => ({
+          x: a.x,
+          y: a.y
+        }))
+      }], {
         ...r,
         chart: {
           ...r.chart,
-          type: a === "column" ? "bar" : a,
-          height: o,
-          toolbar: { show: !1 },
-          animations: { enabled: !0 }
+          type: i === "column" ? "bar" : i,
+          height: c,
+          toolbar: { show: !1 }
         },
-        series: d,
+        series: u,
         labels: m.length ? m : void 0,
-        xaxis: k.length ? { categories: k } : r.xaxis
+        xaxis: C.length ? { categories: C } : r.xaxis
       };
     }, [Z, r]);
-    return T(u, () => ({
+    return T(d, () => ({
       zoomIn: () => {
         var m;
-        const t = i.current;
+        const t = o.current;
         if (!((m = t == null ? void 0 : t.w) != null && m.globals))
           return;
-        const { minX: o, maxX: a } = t.w.globals, d = (a - o) * 0.1;
-        t.zoomX(o + d, a - d);
+        const { minX: c, maxX: i } = t.w.globals, u = (i - c) * 0.1;
+        t.zoomX(c + u, i - u);
       },
       zoomOut: () => {
         var m;
-        const t = i.current;
+        const t = o.current;
         if (!((m = t == null ? void 0 : t.w) != null && m.globals))
           return;
-        const { minX: o, maxX: a } = t.w.globals, d = (a - o) * 0.1;
-        t.zoomX(o - d, a + d);
+        const { minX: c, maxX: i } = t.w.globals, u = (i - c) * 0.1;
+        t.zoomX(c - u, i + u);
       },
       reset: () => {
         var t;
-        (t = i.current) == null || t.resetSeries();
+        (t = o.current) == null || t.resetSeries();
       },
       download: (t) => {
-        const o = i.current;
-        if (!(o != null && o.exports))
+        const c = o.current;
+        if (!(c != null && c.exports))
           return;
-        const a = f || "chart-export";
-        t === "csv" ? o.exports.exportToCSV({ fileName: a }) : t === "svg" ? o.exports.exportToSvg({ fileName: a }) : o.exports.exportToPng({ fileName: a });
+        const i = f || "chart-export";
+        t === "csv" ? c.exports.exportToCSV({ fileName: i }) : t === "svg" ? c.exports.exportToSvg({ fileName: i }) : c.exports.exportToPng({ fileName: i });
       },
       filter: (t) => {
-        var a;
-        const o = b(t, l);
-        (a = i.current) == null || a.updateOptions(o);
+        var i;
+        const c = b(t, l);
+        (i = o.current) == null || i.updateOptions(c);
       }
     })), L(() => {
       if (!p.current)
         return;
       const t = b(e, l);
-      return i.current ? i.current.updateOptions(t) : (i.current = new z(p.current, t), i.current.render()), () => {
-        var o;
-        (o = i.current) == null || o.destroy(), i.current = null;
+      return o.current ? o.current.updateOptions(t) : (o.current = new z(p.current, t), o.current.render()), () => {
+        var c;
+        (c = o.current) == null || c.destroy(), o.current = null;
       };
     }, [b, e, l]), L(() => {
-      if (S && h.current) {
+      if (k && h.current) {
         const t = b(e, "100%");
         w.current = new z(h.current, t), w.current.render();
       }
@@ -229,40 +225,40 @@ const se = E(
         var t;
         (t = w.current) == null || t.destroy(), w.current = null;
       };
-    }, [S, b, e]), /* @__PURE__ */ x("div", { style: $, children: [
+    }, [k, b, e]), /* @__PURE__ */ x("div", { style: $, children: [
       /* @__PURE__ */ x("div", { style: ee, children: [
         /* @__PURE__ */ s("span", { style: te, children: f }),
         /* @__PURE__ */ x("div", { style: { display: "flex", gap: "6px" }, children: [
           /* @__PURE__ */ s("button", { title: "Download", onClick: () => {
             var t;
-            return (t = u.current) == null ? void 0 : t.download();
+            return (t = d.current) == null ? void 0 : t.download();
           }, style: v, children: /* @__PURE__ */ s(Y, {}) }),
           /* @__PURE__ */ s("button", { title: "Zoom In", onClick: () => {
             var t;
-            return (t = u.current) == null ? void 0 : t.zoomIn();
+            return (t = d.current) == null ? void 0 : t.zoomIn();
           }, style: v, children: /* @__PURE__ */ s(G, {}) }),
           /* @__PURE__ */ s("button", { title: "Zoom Out", onClick: () => {
             var t;
-            return (t = u.current) == null ? void 0 : t.zoomOut();
+            return (t = d.current) == null ? void 0 : t.zoomOut();
           }, style: v, children: /* @__PURE__ */ s(q, {}) }),
           /* @__PURE__ */ s("button", { title: "Reset", onClick: () => {
             var t;
-            return (t = u.current) == null ? void 0 : t.reset();
+            return (t = d.current) == null ? void 0 : t.reset();
           }, style: v, children: /* @__PURE__ */ s(J, {}) }),
           /* @__PURE__ */ s("button", { title: "Full Screen", onClick: () => P(!0), style: v, children: /* @__PURE__ */ s(Q, {}) })
         ] })
       ] }),
       /* @__PURE__ */ s("div", { ref: p }),
-      S && /* @__PURE__ */ s("div", { style: re, children: /* @__PURE__ */ x("div", { style: ne, children: [
+      k && /* @__PURE__ */ s("div", { style: re, children: /* @__PURE__ */ x("div", { style: ne, children: [
         /* @__PURE__ */ x("div", { style: le, children: [
           /* @__PURE__ */ s("h3", { style: { margin: 0 }, children: f }),
-          /* @__PURE__ */ s("button", { onClick: () => P(!1), style: oe, children: /* @__PURE__ */ s(U, {}) })
+          /* @__PURE__ */ s("button", { onClick: () => P(!1), style: ae, children: /* @__PURE__ */ s(U, {}) })
         ] }),
         /* @__PURE__ */ s("div", { style: { flex: 1, width: "100%" }, ref: h })
       ] }) })
     ] });
   }
-), $ = { border: "1px solid #e2e8f0", borderRadius: "12px", background: "#fff", overflow: "hidden" }, ee = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", background: "#f8fafc", borderBottom: "1px solid #f1f5f9" }, te = { fontSize: "14px", fontWeight: 600, color: "#475569", fontFamily: "sans-serif" }, v = { background: "#fff", border: "1px solid #e2e8f0", cursor: "pointer", padding: "6px", borderRadius: "6px", display: "flex", alignItems: "center", color: "#64748b" }, re = { position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.9)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)" }, ne = { width: "95vw", height: "90vh", background: "#fff", borderRadius: "16px", padding: "24px", display: "flex", flexDirection: "column" }, le = { display: "flex", justifyContent: "space-between", marginBottom: "20px" }, oe = { background: "#f1f5f9", border: "none", borderRadius: "50%", width: "40px", height: "40px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" };
+), $ = { border: "1px solid #e2e8f0", borderRadius: "12px", background: "#fff", overflow: "hidden" }, ee = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", background: "#f8fafc", borderBottom: "1px solid #f1f5f9" }, te = { fontSize: "14px", fontWeight: 600, color: "#475569", fontFamily: "sans-serif" }, v = { background: "#fff", border: "1px solid #e2e8f0", cursor: "pointer", padding: "6px", borderRadius: "6px", display: "flex", alignItems: "center", color: "#64748b" }, re = { position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.9)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)" }, ne = { width: "95vw", height: "90vh", background: "#fff", borderRadius: "16px", padding: "24px", display: "flex", flexDirection: "column" }, le = { display: "flex", justifyContent: "space-between", marginBottom: "20px" }, ae = { background: "#f1f5f9", border: "none", borderRadius: "50%", width: "40px", height: "40px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" };
 export {
   se as VizlyChart
 };

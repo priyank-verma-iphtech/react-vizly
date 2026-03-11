@@ -51,72 +51,91 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
 
     // 2. Universal Data Transformer
     const getChartConfig = useCallback((incomingData: any[], chartHeight: number | string) => {
-      const t = finalType.toLowerCase();
+
+      const t = finalType.toLowerCase()
     
-      let series: any = [];
-      let labels: string[] = [];
-      let categories: string[] = [];
+      let series:any = []
+      let labels:string[] = []
+      let categories:string[] = []
     
-      if (["pie", "donut", "radialbar"].includes(t)) {
+      // DONUT / PIE
+      if(["donut","pie","radialbar"].includes(t)){
     
-        series = incomingData.map(d => d.y ?? d.value ?? d);
-        labels = incomingData.map(d => d.x ?? d.label ?? "");
+        series = incomingData.map(d => d.y ?? d.value ?? d)
+        labels = incomingData.map(d => d.x ?? d.label ?? "")
     
-      } else if (t === "heatmap") {
+      }
     
-        series = [
-          {
-            name: "Series 1",
-            data: incomingData.map(d => ({
-              x: d.x,
-              y: d.y
-            }))
-          }
-        ];
+      // BAR / COLUMN
+      else if(["bar","column"].includes(t)){
     
-      } else if (["bar", "column", "radar"].includes(t)) {
+        categories = incomingData.map(d => d.x ?? "")
+        series = [{
+          name: options?.seriesName || "Series 1",
+          data: incomingData.map(d => d.y ?? d)
+        }]
     
-        series = [
-          {
-            name: options?.seriesName || "Series 1",
-            data: incomingData.map(d => d.y ?? d)
-          }
-        ];
+      }
     
-        categories = incomingData.map(d => d.x ?? "");
+      // RADAR
+      else if(t === "radar"){
     
-      } else {
+        categories = incomingData.map(d => d.x ?? "")
+        series = [{
+          name: options?.seriesName || "Series 1",
+          data: incomingData.map(d => d.y ?? d)
+        }]
     
-        // line / area
-        series = [
-          {
-            name: options?.seriesName || "Series 1",
-            data: incomingData.map(d => ({
-              x: d.x,
-              y: d.y
-            }))
-          }
-        ];
+      }
+    
+      // HEATMAP
+      else if(t === "heatmap"){
+    
+        series = [{
+          name: "Series 1",
+          data: incomingData.map(d => ({
+            x: d.x,
+            y: d.y
+          }))
+        }]
+    
+      }
+    
+      // LINE / AREA / DEFAULT
+      else{
+    
+        series = [{
+          name: options?.seriesName || "Series 1",
+          data: incomingData.map(d => ({
+            x: d.x,
+            y: d.y
+          }))
+        }]
     
       }
     
       return {
+    
         ...options,
-        chart: {
+    
+        chart:{
           ...options.chart,
           type: t === "column" ? "bar" : t,
           height: chartHeight,
-          toolbar: { show: false },
-          animations: { enabled: true }
+          toolbar:{show:false}
         },
+    
         series,
+    
         labels: labels.length ? labels : undefined,
+    
         xaxis: categories.length
           ? { categories }
           : options.xaxis
-      };
     
-    }, [finalType, options]);
+      }
+    
+    },[finalType,options])
     // 3. Imperative API
     useImperativeHandle(ref, () => ({
       zoomIn: () => {
