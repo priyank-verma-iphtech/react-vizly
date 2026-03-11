@@ -101,43 +101,73 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     }, [options?.seriesName]);
 
     const getBaseConfig = useCallback((chartHeight: number | string) => {
+
       const isCircular = ["pie", "donut", "radialBar"].includes(finalType);
     
       let series: any = [];
       let labels: string[] | undefined = options?.labels;
       let categories: any = options?.xaxis?.categories;
     
+      // ----- PIE / DONUT -----
       if (isCircular) {
-        // donut / pie / radial
-        series = data.map((d: any) => (typeof d === "object" ? d.value : d));
+    
+        series = data.map((d: any) =>
+          typeof d === "object" ? d.value : d
+        );
+    
         labels = data.map((d: any) => d.label ?? d.x);
+    
+        return {
+          ...options,
+    
+          chart: {
+            ...options.chart,
+            type: finalType,
+            height: chartHeight,
+            toolbar: { show: true }
+          },
+    
+          series,
+          labels
+        };
       }
     
-      else if (finalType === "bar") {
-        // categorical bars
+      // ----- BAR -----
+      if (finalType === "bar") {
+    
         if (data[0]?.x !== undefined) {
+    
           categories = data.map((d: any) => d.x);
+    
           series = [{
             name: options?.seriesName || "Series 1",
             data: data.map((d: any) => d.y)
           }];
+    
         } else {
+    
           series = [{
             name: options?.seriesName || "Series 1",
             data
           }];
+    
         }
+    
       }
     
+      // ----- LINE / AREA / SCATTER -----
       else if (["line", "area", "scatter"].includes(finalType)) {
-        // coordinate charts
+    
         series = [{
           name: options?.seriesName || "Series 1",
           data
         }];
+    
       }
     
+      // ----- RANGE BAR -----
       else if (finalType === "rangeBar") {
+    
         series = [{
           name: options?.seriesName || "Series 1",
           data: data.map((d: any) => ({
@@ -145,9 +175,12 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
             y: d.y
           }))
         }];
+    
       }
     
+      // ----- BUBBLE -----
       else if (finalType === "bubble") {
+    
         series = [{
           name: options?.seriesName || "Series 1",
           data: data.map((d: any) => ({
@@ -156,33 +189,36 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
             z: d.z
           }))
         }];
+    
       }
     
+      // fallback
       else {
-        // fallback
+    
         series = [{
           name: options?.seriesName || "Series 1",
           data
         }];
+    
       }
     
       return {
         ...options,
+    
         chart: {
-          toolbar: { show: true },
           ...options.chart,
           type: finalType,
-          height: chartHeight
+          height: chartHeight,
+          toolbar: { show: true }
         },
     
         series,
-    
-        labels,
     
         xaxis: {
           ...options?.xaxis,
           categories
         }
+    
       };
     
     }, [data, finalType, options]);
