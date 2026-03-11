@@ -63,7 +63,9 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     const [showModal, setShowModal] = useState(false);
 
     // 1. Determine Type
-    const finalType = useMemo(() => type || inferChartType(data), [data, type]);
+    const finalType = useMemo(() => {
+      return type || options?.chart?.type || inferChartType(data);
+    }, [data, type, options?.chart?.type]);
 
     // 2. Safe Data Formatter (Prevents .slice errors)
     const formatSeries = useCallback((incomingData: any[], chartType: string) => {
@@ -149,7 +151,7 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     return (
       <div style={containerStyle}>
         <button onClick={() => setShowModal(true)} style={iconButtonStyle} title="Full Screen">
-          <CiMaximize1 size={20} />
+          <CiMaximize1 size={12} />
         </button>
 
         <div ref={chartRef} />
@@ -160,7 +162,7 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
               <div style={modalHeaderStyle}>
                 <h3 style={{ margin: 0 }}>Detailed View</h3>
                 <button onClick={() => setShowModal(false)} style={closeButtonStyle}>
-                  <RxCross1 size={22} />
+                  <RxCross1 size={12} />
                 </button>
               </div>
               <div ref={modalChartRef} style={{ flex: 1, width: '100%' }} />
@@ -175,13 +177,12 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
 // --- Styles ---
 const containerStyle: React.CSSProperties = {
   position: "relative", width: "100%", background: "#fff",
-  border: "1px solid #e2e8f0", borderRadius: "12px", padding: "15px"
+ 
 };
 
 const iconButtonStyle: React.CSSProperties = {
-  position: "absolute", right: "15px", top: "15px", zIndex: 10,
-  background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: "6px",
-  cursor: "pointer", padding: "6px", display: "flex", alignItems: "center"
+  position: "absolute", right: "6px", top: "6px", zIndex: 10,
+  background: "#f8fafc",cursor: "pointer", padding: "6px", display: "flex", alignItems: "center"
 };
 
 const modalOverlayStyle: React.CSSProperties = {
