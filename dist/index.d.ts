@@ -15,7 +15,6 @@ export declare interface VizlyRef {
     zoomOut: () => void;
     reset: () => void;
     download: (format: "png" | "csv" | "svg") => void;
-    filter: (newData: any[]) => void;
 }
 
 export { }
