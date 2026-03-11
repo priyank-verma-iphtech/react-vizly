@@ -8,7 +8,7 @@ import React, {
   useCallback
 } from "react";
 import ApexCharts from "apexcharts";
-import { CiMaximize1, CiZoomIn, CiZoomOut, CiRead, } from "react-icons/ci";
+import { CiMaximize1, CiZoomIn, CiZoomOut, CiRead,} from "react-icons/ci";
 import { RxCross1 } from "react-icons/rx";
 
 // --- Types ---
@@ -24,11 +24,11 @@ export interface VizlyRef {
   zoomIn: () => void;
   zoomOut: () => void;
   reset: () => void;
-  download: (type: "png" | "csv" | "svg") => void;
+  download: (format: "png" | "csv" | "svg") => void;
   filter: (newData: any[]) => void;
 }
 
-// --- Inference Engine ---
+// --- Smart Inference Engine ---
 export const inferChartType = (data: any[]): string => {
   if (!Array.isArray(data) || data.length === 0) return "bar";
   const first = data[0];
@@ -38,7 +38,6 @@ export const inferChartType = (data: any[]): string => {
     const isDate = first.x instanceof Date || (typeof first.x === "string" && !isNaN(Date.parse(first.x)));
     if (isDate) return "area";
     if (typeof first.x === "string") return "bar";
-    if (Array.isArray(first.y)) return "rangeBar";
     return "line";
   }
   return "bar";
@@ -49,16 +48,37 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     const chartRef = useRef<HTMLDivElement>(null);
     const modalChartRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<ApexCharts | null>(null);
+    const modalInstance = useRef<ApexCharts | null>(null);
     const [showModal, setShowModal] = useState(false);
 
     const finalType = useMemo(() => type || inferChartType(data), [data, type]);
 
-    // --- Configuration Generator ---
+    // --- Configuration Logic (The fix for Bar charts is here) ---
     const getBaseConfig = useCallback((incomingData: any[], chartHeight: number | string) => {
       const isCircular = ["pie", "donut", "radialBar"].includes(finalType);
-      let series = isCircular 
-        ? incomingData.map(d => typeof d === "object" ? d.value : d)
-        : [{ name: options?.seriesName || "Series 1", data: incomingData }];
+      const isBar = finalType === "bar";
+
+      let series: any = [];
+      let labels = options?.labels;
+      let categories = options?.xaxis?.categories;
+
+      if (isCircular) {
+        series = incomingData.map(d => typeof d === "object" ? (d.value ?? d.y) : d);
+        labels = incomingData.map(d => d.label ?? d.x);
+      } else if (isBar) {
+        // Bar charts need a simple array of values and categories for labels
+        series = [{
+          name: options?.seriesName || "Series 1",
+          data: incomingData.map(d => d.y ?? d)
+        }];
+        categories = incomingData.map(d => String(d.x ?? ""));
+      } else {
+        // Line/Area can handle the [{x, y}] format directly
+        series = [{
+          name: options?.seriesName || "Series 1",
+          data: incomingData
+        }];
+      }
 
       return {
         ...options,
@@ -66,11 +86,12 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
           ...options.chart,
           type: finalType,
           height: chartHeight,
-          toolbar: { show: false }, // We use our own custom UI
+          toolbar: { show: false },
           animations: { enabled: true }
         },
         series,
-        labels: isCircular ? incomingData.map(d => d.label ?? d.x) : options.labels,
+        labels,
+        xaxis: { ...options.xaxis, categories }
       };
     }, [finalType, options]);
 
@@ -88,20 +109,22 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
         if (!chart?.w) return;
         const { min, max } = chart.w.globals.lastXAxis;
         const range = max - min;
-        chart.zoomX(min - range * 0.1, max + range * 0.1);
+        chart.zoomX(min - range * 0.2, max + range * 0.2);
       },
       reset: () => chartInstance.current?.resetSeries(),
       download: (format) => {
-        // Access internal Apex export method
         const chart = chartInstance.current as any;
-        chart.exports.exportToCSV({ fileName: "vizly-data" }); // example for CSV
+        if (!chart) return;
+        if (format === "csv") chart.exports.exportToCSV({ fileName: title });
+        if (format === "png") chart.exports.exportToPng({ fileName: title });
+        if (format === "svg") chart.exports.exportToSvg({ fileName: title });
       },
       filter: (newData) => {
         chartInstance.current?.updateOptions(getBaseConfig(newData, height));
       }
     }));
 
-    // --- Lifecycle ---
+    // --- Main Chart Lifecycle ---
     useEffect(() => {
       if (!chartRef.current) return;
       const config = getBaseConfig(data, height);
@@ -114,30 +137,39 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       return () => { chartInstance.current?.destroy(); chartInstance.current = null; };
     }, [getBaseConfig, data, height]);
 
+    // --- Modal Chart Lifecycle ---
+    useEffect(() => {
+      if (showModal && modalChartRef.current) {
+        const config = getBaseConfig(data, "100%");
+        modalInstance.current = new ApexCharts(modalChartRef.current, config);
+        modalInstance.current.render();
+      }
+      return () => { modalInstance.current?.destroy(); modalInstance.current = null; };
+    }, [showModal, getBaseConfig, data]);
+
     return (
       <div style={wrapperStyle}>
-        {/* Custom Toolbar */}
         <div style={toolbarStyle}>
           <span style={titleStyle}>{title}</span>
-          <div style={{ display: 'flex', gap: '4px' }}>
-            <button onClick={() => ref && 'current' in ref && ref.current?.zoomIn()} style={btnStyle}><CiZoomIn /></button>
-            <button onClick={() => ref && 'current' in ref && ref.current?.zoomOut()} style={btnStyle}><CiZoomOut /></button>
-            <button onClick={() => ref && 'current' in ref && ref.current?.reset()} style={btnStyle}><CiRead /></button>
-            <button onClick={() => setShowModal(true)} style={btnStyle}><CiMaximize1 /></button>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <button title="Download PNG" onClick={() => (ref as any).current?.download("png")} style={btnStyle}><CiDownload /></button>
+            <button title="Zoom In" onClick={() => (ref as any).current?.zoomIn()} style={btnStyle}><CiZoomIn /></button>
+            <button title="Zoom Out" onClick={() => (ref as any).current?.zoomOut()} style={btnStyle}><CiZoomOut /></button>
+            <button title="Reset" onClick={() => (ref as any).current?.reset()} style={btnStyle}><CiRead /></button>
+            <button title="Full View" onClick={() => setShowModal(true)} style={btnStyle}><CiMaximize1 /></button>
           </div>
         </div>
 
         <div ref={chartRef} />
 
-        {/* Full View Modal */}
         {showModal && (
           <div style={modalOverlayStyle}>
             <div style={modalContentStyle}>
               <div style={modalHeaderStyle}>
-                <h3>{title} - Detailed View</h3>
+                <h3 style={{ margin: 0 }}>{title}</h3>
                 <button onClick={() => setShowModal(false)} style={closeBtnStyle}><RxCross1 /></button>
               </div>
-              <div style={{ flex: 1 }} ref={modalChartRef} />
+              <div style={{ flex: 1, width: '100%' }} ref={modalChartRef} />
             </div>
           </div>
         )}
@@ -147,13 +179,13 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
 );
 
 // --- Styling ---
-const wrapperStyle: React.CSSProperties = { border: "1px solid #edf2f7", borderRadius: "12px", background: "#fff", overflow: "hidden" };
-const toolbarStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderBottom: "1px solid #f1f5f9" };
+const wrapperStyle: React.CSSProperties = { border: "1px solid #edf2f7", borderRadius: "12px", background: "#fff", overflow: "hidden", position: 'relative' };
+const toolbarStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", background: "#f8fafc", borderBottom: "1px solid #f1f5f9" };
 const titleStyle: React.CSSProperties = { fontSize: "14px", fontWeight: 600, color: "#475569" };
-const btnStyle: React.CSSProperties = { background: "none", border: "none", cursor: "pointer", padding: "6px", borderRadius: "4px", display: "flex", alignItems: "center", color: "#64748b" };
-const modalOverlayStyle: React.CSSProperties = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" };
-const modalContentStyle: React.CSSProperties = { width: "95vw", height: "90vh", background: "#fff", borderRadius: "16px", padding: "24px", display: "flex", flexDirection: "column" };
-const modalHeaderStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", marginBottom: "20px" };
-const closeBtnStyle: React.CSSProperties = { background: "#f1f5f9", border: "none", borderRadius: "50%", width: "32px", height: "32px", cursor: "pointer" };
+const btnStyle: React.CSSProperties = { background: "#fff", border: "1px solid #e2e8f0", cursor: "pointer", padding: "6px", borderRadius: "6px", display: "flex", alignItems: "center", color: "#64748b" };
+const modalOverlayStyle: React.CSSProperties = { position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.9)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" };
+const modalContentStyle: React.CSSProperties = { width: "90vw", height: "85vh", background: "#fff", borderRadius: "16px", padding: "24px", display: "flex", flexDirection: "column" };
+const modalHeaderStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" };
+const closeBtnStyle: React.CSSProperties = { background: "#f1f5f9", border: "none", borderRadius: "50%", width: "36px", height: "36px", cursor: "pointer", display: 'flex', alignItems: 'center', justifyContent: 'center' };
 
 export default VizlyChart;
