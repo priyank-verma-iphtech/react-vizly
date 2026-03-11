@@ -13,12 +13,10 @@ import ApexCharts from "apexcharts";
 import { CiMaximize1 } from "react-icons/ci";
 import { RxCross1 } from "react-icons/rx";
 
-
-// ---------------- TYPES ----------------
-
+// --- Types ---
 export interface VizlyProps {
   data: any[];
-  type?: string;
+  type?: string; 
   options?: any;
   height?: number | string;
 }
@@ -30,49 +28,37 @@ export interface VizlyRef {
   reset: () => void;
 }
 
-
-// ---------------- CHART TYPE DETECTOR ----------------
-
+// --- Smart Inference Engine ---
 export const inferChartType = (data: any[]): string => {
-  if (!Array.isArray(data) || data.length === 0) return "bar";
-
+  if (!Array.isArray(data) || data.length === 0) return 'bar';
+  
   const first = data[0];
 
-  if (typeof first === "number") return "donut";
+  // Simple number array -> Donut/Pie
+  if (typeof first === 'number') return 'donut';
 
+  // Coordinate data (x, y)
   if (first?.x !== undefined && first?.y !== undefined) {
-
-    const isDate =
-      first.x instanceof Date ||
-      (typeof first.x === "string" &&
-        isNaN(Number(first.x)) &&
-        !isNaN(Date.parse(first.x)));
-
-    if (isDate) return "area";
-
-    if (typeof first.x === "string" && !isDate) return "bar";
-
-    if (Array.isArray(first.y)) return "rangeBar";
-
-    if (first?.z !== undefined) return "bubble";
-
-    return "line";
+    // Check if x is a date string or object
+    const isDate = first.x instanceof Date || 
+                  (typeof first.x === 'string' && isNaN(Number(first.x)) && !isNaN(Date.parse(first.x)));
+    
+    if (isDate) return 'area'; 
+    if (Array.isArray(first.y)) return 'rangeBar';
+    if (first?.z !== undefined) return 'bubble';
+    return 'line';
   }
 
-  if (first?.label !== undefined && first?.value !== undefined) return "donut";
+  // Label/Value pairs
+  if (first?.label !== undefined && first?.value !== undefined) return 'donut';
 
-  return "bar";
+  return 'bar';
 };
-
-
-// ---------------- COMPONENT ----------------
 
 const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
   ({ data, type, options = {}, height = 350 }, ref) => {
-
     const chartRef = useRef<HTMLDivElement>(null);
     const modalChartRef = useRef<HTMLDivElement>(null);
-
     const chartInstance = useRef<ApexCharts | null>(null);
     const modalChartInstance = useRef<ApexCharts | null>(null);
 
@@ -269,6 +255,7 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
 
     // -------- Modal Chart --------
 
+    // 6. Modal Chart Lifecycle
     useEffect(() => {
 
       if (showModal && modalChartRef.current) {
