@@ -11,6 +11,7 @@ import ApexCharts from "apexcharts";
 // Fixed: Added missing icon imports
 import { CiMaximize1, CiZoomIn, CiZoomOut, CiRead, } from "react-icons/ci";
 import { RxCross1 } from "react-icons/rx";
+import { FiDownload } from "react-icons/fi";
 
 // --- Types ---
 export interface VizlyProps {
@@ -51,56 +52,71 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     // 2. Universal Data Transformer
     const getChartConfig = useCallback((incomingData: any[], chartHeight: number | string) => {
       const t = finalType.toLowerCase();
-      
-      const isCircular = ["pie", "donut", "radialbar"].includes(t);
-      const isHeatmapTreemap = ["heatmap", "treemap"].includes(t);
-      const isBarColumn = ["bar", "column"].includes(t);
-      const isRadar = ["radar", "radaraxis"].includes(t);
-
+    
       let series: any = [];
-      let labels = options?.labels || [];
-      let categories = options?.xaxis?.categories || [];
-
-      if (isCircular) {
-        series = incomingData.map(d => (typeof d === "object" ? (d.y ?? d.value) : d));
-        labels = incomingData.map(d => String(d.x ?? d.label ?? ""));
-      } 
-      else if (isHeatmapTreemap) {
-        series = [{ data: incomingData }];
+      let labels: string[] = [];
+      let categories: string[] = [];
+    
+      if (["pie", "donut", "radialbar"].includes(t)) {
+    
+        series = incomingData.map(d => d.y ?? d.value ?? d);
+        labels = incomingData.map(d => d.x ?? d.label ?? "");
+    
+      } else if (t === "heatmap") {
+    
+        series = [
+          {
+            name: "Series 1",
+            data: incomingData.map(d => ({
+              x: d.x,
+              y: d.y
+            }))
+          }
+        ];
+    
+      } else if (["bar", "column", "radar"].includes(t)) {
+    
+        series = [
+          {
+            name: options?.seriesName || "Series 1",
+            data: incomingData.map(d => d.y ?? d)
+          }
+        ];
+    
+        categories = incomingData.map(d => d.x ?? "");
+    
+      } else {
+    
+        // line / area
+        series = [
+          {
+            name: options?.seriesName || "Series 1",
+            data: incomingData.map(d => ({
+              x: d.x,
+              y: d.y
+            }))
+          }
+        ];
+    
       }
-      else if (isBarColumn || isRadar) {
-        series = options.series || [{
-          name: options?.seriesName || "Series 1",
-          data: incomingData.map(d => (d.y !== undefined ? d.y : d))
-        }];
-        categories = incomingData.map(d => String(d.x ?? ""));
-      }
-      else {
-        series = options.series || [{
-          name: options?.seriesName || "Series 1",
-          data: incomingData.map(d => ({ x: d.x, y: d.y }))
-        }];
-      }
-
+    
       return {
         ...options,
         chart: {
           ...options.chart,
-          type: t === 'column' ? 'bar' : (t === 'radical donut' ? 'donut' : t),
+          type: t === "column" ? "bar" : t,
           height: chartHeight,
           toolbar: { show: false },
-          animations: { enabled: true, speed: 800 },
-          plotOptions: t === 'column' ? { bar: { horizontal: false } } : options.plotOptions
+          animations: { enabled: true }
         },
         series,
         labels: labels.length ? labels : undefined,
-        xaxis: {
-          ...options.xaxis,
-          categories: categories.length ? categories : undefined
-        }
+        xaxis: categories.length
+          ? { categories }
+          : options.xaxis
       };
+    
     }, [finalType, options]);
-
     // 3. Imperative API
     useImperativeHandle(ref, () => ({
       zoomIn: () => {
@@ -162,6 +178,7 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
           <span style={titleStyle}>{title}</span>
           <div style={{ display: 'flex', gap: '6px' }}>
             {/* Fixed: Added missing buttons back to UI */}
+            <button title="Download" onClick={() => (ref as any).current?.download()} style={btnStyle}><FiDownload /></button>
             <button title="Zoom In" onClick={() => (ref as any).current?.zoomIn()} style={btnStyle}><CiZoomIn /></button>
             <button title="Zoom Out" onClick={() => (ref as any).current?.zoomOut()} style={btnStyle}><CiZoomOut /></button>
             <button title="Reset" onClick={() => (ref as any).current?.reset()} style={btnStyle}><CiRead /></button>
