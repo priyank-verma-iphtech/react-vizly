@@ -1,5 +1,4 @@
-import React,
-{
+import React, {
   useEffect,
   useRef,
   useImperativeHandle,
@@ -8,399 +7,153 @@ import React,
   useMemo,
   useCallback
 } from "react";
-
 import ApexCharts from "apexcharts";
-import { CiMaximize1 } from "react-icons/ci";
+import { CiMaximize1, CiZoomIn, CiZoomOut, CiRead, } from "react-icons/ci";
 import { RxCross1 } from "react-icons/rx";
 
 // --- Types ---
 export interface VizlyProps {
   data: any[];
-  type?: string; 
+  type?: string;
   options?: any;
   height?: number | string;
+  title?: string;
 }
 
 export interface VizlyRef {
   zoomIn: () => void;
   zoomOut: () => void;
-  filter: (newData: any[]) => void;
   reset: () => void;
+  download: (type: "png" | "csv" | "svg") => void;
+  filter: (newData: any[]) => void;
 }
 
-// --- Smart Inference Engine ---
+// --- Inference Engine ---
 export const inferChartType = (data: any[]): string => {
-  if (!Array.isArray(data) || data.length === 0) return 'bar';
-  
+  if (!Array.isArray(data) || data.length === 0) return "bar";
   const first = data[0];
 
-  // Simple number array -> Donut/Pie
-  if (typeof first === 'number') return 'donut';
-
-  // Coordinate data (x, y)
+  if (typeof first === "number") return "donut";
   if (first?.x !== undefined && first?.y !== undefined) {
-    // Check if x is a date string or object
-    const isDate = first.x instanceof Date || 
-                  (typeof first.x === 'string' && isNaN(Number(first.x)) && !isNaN(Date.parse(first.x)));
-    
-    if (isDate) return 'area'; 
-    if (Array.isArray(first.y)) return 'rangeBar';
-    if (first?.z !== undefined) return 'bubble';
-    return 'line';
+    const isDate = first.x instanceof Date || (typeof first.x === "string" && !isNaN(Date.parse(first.x)));
+    if (isDate) return "area";
+    if (typeof first.x === "string") return "bar";
+    if (Array.isArray(first.y)) return "rangeBar";
+    return "line";
   }
-
-  // Label/Value pairs
-  if (first?.label !== undefined && first?.value !== undefined) return 'donut';
-
-  return 'bar';
+  return "bar";
 };
 
 const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
-  ({ data, type, options = {}, height = 350 }, ref) => {
+  ({ data, type, options = {}, height = 350, title = "Chart View" }, ref) => {
     const chartRef = useRef<HTMLDivElement>(null);
     const modalChartRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<ApexCharts | null>(null);
-    const modalChartInstance = useRef<ApexCharts | null>(null);
-
     const [showModal, setShowModal] = useState(false);
 
+    const finalType = useMemo(() => type || inferChartType(data), [data, type]);
 
-    // -------- Determine Chart Type --------
-
-    const finalType = useMemo(() => {
-      return type || options?.chart?.type || inferChartType(data);
-    }, [data, type, options?.chart?.type]);
-
-
-    // -------- Series Formatter --------
-
-    const formatSeries = useCallback((incomingData: any[], chartType: string) => {
-
-      const safeData = Array.isArray(incomingData) ? incomingData : [];
-
-      const isCircular = ["pie", "donut", "radialBar"].includes(chartType);
-
-      if (isCircular) {
-        return safeData.map((item) =>
-          typeof item === "object" ? item.value : item
-        );
-      }
-    
-      // 🔹 BAR FIX
-      if (chartType === "bar" && safeData[0]?.x !== undefined) {
-        return [{
-          name: options?.seriesName || "Series 1",
-          data: safeData.map((d) => d.y)
-        }];
-      }
-    
-      return [{
-        name: options?.seriesName || "Series 1",
-        data: safeData
-      }];
-    }, [options?.seriesName]);
-
-    const getBaseConfig = useCallback((chartHeight: number | string) => {
+    // --- Configuration Generator ---
+    const getBaseConfig = useCallback((incomingData: any[], chartHeight: number | string) => {
       const isCircular = ["pie", "donut", "radialBar"].includes(finalType);
-    
-      let series: any = [];
-      let labels: string[] | undefined = options?.labels;
-      let categories: any = options?.xaxis?.categories;
-    
-      if (isCircular) {
-        // donut / pie / radial
-        series = data.map((d: any) => (typeof d === "object" ? d.value : d));
-        labels = data.map((d: any) => d.label ?? d.x);
-      }
-    
-      else if (finalType === "bar") {
-        // categorical bars
-        if (data[0]?.x !== undefined) {
-          categories = data.map((d: any) => d.x);
-          series = [{
-            name: options?.seriesName || "Series 1",
-            data: data.map((d: any) => d.y)
-          }];
-        } else {
-          series = [{
-            name: options?.seriesName || "Series 1",
-            data
-          }];
-        }
-      }
-    
-      else if (["line", "area", "scatter"].includes(finalType)) {
-        // coordinate charts
-        series = [{
-          name: options?.seriesName || "Series 1",
-          data
-        }];
-      }
-    
-      else if (finalType === "rangeBar") {
-        series = [{
-          name: options?.seriesName || "Series 1",
-          data: data.map((d: any) => ({
-            x: d.x,
-            y: d.y
-          }))
-        }];
-      }
-    
-      else if (finalType === "bubble") {
-        series = [{
-          name: options?.seriesName || "Series 1",
-          data: data.map((d: any) => ({
-            x: d.x,
-            y: d.y,
-            z: d.z
-          }))
-        }];
-      }
-    
-      else {
-        // fallback
-        series = [{
-          name: options?.seriesName || "Series 1",
-          data
-        }];
-      }
-    
+      let series = isCircular 
+        ? incomingData.map(d => typeof d === "object" ? d.value : d)
+        : [{ name: options?.seriesName || "Series 1", data: incomingData }];
+
       return {
         ...options,
         chart: {
-          toolbar: { show: true },
           ...options.chart,
           type: finalType,
-          height: chartHeight
+          height: chartHeight,
+          toolbar: { show: false }, // We use our own custom UI
+          animations: { enabled: true }
         },
-    
         series,
-    
-        labels,
-    
-        xaxis: {
-          ...options?.xaxis,
-          categories
-        }
+        labels: isCircular ? incomingData.map(d => d.label ?? d.x) : options.labels,
       };
-    
-    }, [data, finalType, options]);
+    }, [finalType, options]);
 
-    // 3. Imperative API (Exposing internal Apex methods safely)
+    // --- Imperative API ---
     useImperativeHandle(ref, () => ({
-
       zoomIn: () => {
         const chart = chartInstance.current as any;
         if (!chart?.w) return;
-
-        const { min, max } =
-          chart.w.globals.lastXAxis ||
-          { min: chart.w.globals.minX, max: chart.w.globals.maxX };
-
-        const diff = (max - min) * 0.2;
-
-        chart.zoomX(min + diff, max - diff);
+        const { min, max } = chart.w.globals.lastXAxis || { min: chart.w.globals.minX, max: chart.w.globals.maxX };
+        const range = max - min;
+        chart.zoomX(min + range * 0.1, max - range * 0.1);
       },
-
-      zoomOut: () => chartInstance.current?.resetSeries(),
-
-      filter: (newData: any[]) => {
-        chartInstance.current?.updateSeries(
-          formatSeries(newData, finalType)
-        );
+      zoomOut: () => {
+        const chart = chartInstance.current as any;
+        if (!chart?.w) return;
+        const { min, max } = chart.w.globals.lastXAxis;
+        const range = max - min;
+        chart.zoomX(min - range * 0.1, max + range * 0.1);
       },
-
-      reset: () => chartInstance.current?.resetSeries()
-
+      reset: () => chartInstance.current?.resetSeries(),
+      download: (format) => {
+        // Access internal Apex export method
+        const chart = chartInstance.current as any;
+        chart.exports.exportToCSV({ fileName: "vizly-data" }); // example for CSV
+      },
+      filter: (newData) => {
+        chartInstance.current?.updateOptions(getBaseConfig(newData, height));
+      }
     }));
 
-
-    // -------- Main Chart Lifecycle --------
-
+    // --- Lifecycle ---
     useEffect(() => {
-
       if (!chartRef.current) return;
-
-      const config = getBaseConfig(height);
-
+      const config = getBaseConfig(data, height);
       if (!chartInstance.current) {
-
-        const newChart = new ApexCharts(chartRef.current, config);
-
-        chartInstance.current = newChart;
-
-        newChart.render().catch(() => {});
-
+        chartInstance.current = new ApexCharts(chartRef.current, config);
+        chartInstance.current.render();
       } else {
-
-        chartInstance.current.updateOptions(config, false, true);
-
+        chartInstance.current.updateOptions(config);
       }
-
-      return () => {
-
-        if (chartInstance.current) {
-
-          chartInstance.current.destroy();
-
-          chartInstance.current = null;
-
-        }
-
-      };
-
-    }, [getBaseConfig, height]);
-
-
-    // -------- Modal Chart --------
-
-    // 6. Modal Chart Lifecycle
-    useEffect(() => {
-
-      if (showModal && modalChartRef.current) {
-
-        const config = getBaseConfig("100%");
-
-        modalChartInstance.current = new ApexCharts(
-          modalChartRef.current,
-          config
-        );
-
-        modalChartInstance.current.render().catch(() => {});
-
-      }
-
-      return () => {
-
-        if (modalChartInstance.current) {
-
-          modalChartInstance.current.destroy();
-
-          modalChartInstance.current = null;
-
-        }
-
-      };
-
-    }, [showModal, getBaseConfig]);
-
-
-    // -------- UI --------
+      return () => { chartInstance.current?.destroy(); chartInstance.current = null; };
+    }, [getBaseConfig, data, height]);
 
     return (
-      <div style={containerStyle}>
-
-        <button
-          onClick={() => setShowModal(true)}
-          style={iconButtonStyle}
-          title="Full Screen"
-        >
-          <CiMaximize1 size={12} />
-        </button>
+      <div style={wrapperStyle}>
+        {/* Custom Toolbar */}
+        <div style={toolbarStyle}>
+          <span style={titleStyle}>{title}</span>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <button onClick={() => ref && 'current' in ref && ref.current?.zoomIn()} style={btnStyle}><CiZoomIn /></button>
+            <button onClick={() => ref && 'current' in ref && ref.current?.zoomOut()} style={btnStyle}><CiZoomOut /></button>
+            <button onClick={() => ref && 'current' in ref && ref.current?.reset()} style={btnStyle}><CiRead /></button>
+            <button onClick={() => setShowModal(true)} style={btnStyle}><CiMaximize1 /></button>
+          </div>
+        </div>
 
         <div ref={chartRef} />
 
+        {/* Full View Modal */}
         {showModal && (
-
           <div style={modalOverlayStyle}>
-
             <div style={modalContentStyle}>
-
               <div style={modalHeaderStyle}>
-
-                <h3 style={{ margin: 0 }}>Detailed View</h3>
-
-                <button
-                  onClick={() => setShowModal(false)}
-                  style={closeButtonStyle}
-                >
-                  <RxCross1 size={12} />
-                </button>
-
+                <h3>{title} - Detailed View</h3>
+                <button onClick={() => setShowModal(false)} style={closeBtnStyle}><RxCross1 /></button>
               </div>
-
-              <div
-                ref={modalChartRef}
-                style={{ flex: 1, width: "100%" }}
-              />
-
+              <div style={{ flex: 1 }} ref={modalChartRef} />
             </div>
-
           </div>
-
         )}
-
       </div>
     );
-
   }
 );
 
-
-// ---------------- STYLES ----------------
-
-const containerStyle: React.CSSProperties = {
-  position: "relative",
-  width: "100%",
-  background: "#fff"
-};
-
-const iconButtonStyle: React.CSSProperties = {
-  position: "absolute",
-  right: "6px",
-  top: "6px",
-  zIndex: 10,
-  background: "#f8fafc",
-  cursor: "pointer",
-  padding: "6px",
-  display: "flex",
-  alignItems: "center"
-};
-
-const modalOverlayStyle: React.CSSProperties = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  width: "100vw",
-  height: "100vh",
-  backgroundColor: "rgba(15,23,42,0.9)",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  zIndex: 9999,
-  backdropFilter: "blur(4px)"
-};
-
-const modalContentStyle: React.CSSProperties = {
-  width: "90%",
-  height: "85%",
-  backgroundColor: "#fff",
-  borderRadius: "16px",
-  padding: "25px",
-  display: "flex",
-  flexDirection: "column"
-};
-
-const modalHeaderStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: "20px",
-  paddingBottom: "15px",
-  borderBottom: "1px solid #f1f5f9"
-};
-
-const closeButtonStyle: React.CSSProperties = {
-  background: "#f1f5f9",
-  border: "none",
-  borderRadius: "50%",
-  width: "36px",
-  height: "36px",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center"
-};
+// --- Styling ---
+const wrapperStyle: React.CSSProperties = { border: "1px solid #edf2f7", borderRadius: "12px", background: "#fff", overflow: "hidden" };
+const toolbarStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderBottom: "1px solid #f1f5f9" };
+const titleStyle: React.CSSProperties = { fontSize: "14px", fontWeight: 600, color: "#475569" };
+const btnStyle: React.CSSProperties = { background: "none", border: "none", cursor: "pointer", padding: "6px", borderRadius: "4px", display: "flex", alignItems: "center", color: "#64748b" };
+const modalOverlayStyle: React.CSSProperties = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" };
+const modalContentStyle: React.CSSProperties = { width: "95vw", height: "90vh", background: "#fff", borderRadius: "16px", padding: "24px", display: "flex", flexDirection: "column" };
+const modalHeaderStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", marginBottom: "20px" };
+const closeBtnStyle: React.CSSProperties = { background: "#f1f5f9", border: "none", borderRadius: "50%", width: "32px", height: "32px", cursor: "pointer" };
 
 export default VizlyChart;
