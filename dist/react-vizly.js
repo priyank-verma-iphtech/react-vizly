@@ -1,7 +1,7 @@
-import { jsx as V } from "react/jsx-runtime";
-import { forwardRef as X, useRef as x, useMemo as F, useImperativeHandle as E, useEffect as I } from "react";
-import R from "apexcharts";
-const O = (a) => {
+import { jsx as O } from "react/jsx-runtime";
+import { forwardRef as V, useRef as d, useState as R, useEffect as j, useMemo as X, useImperativeHandle as B } from "react";
+import T from "apexcharts";
+const C = (a) => {
   if (!a || a.length === 0)
     return "bar";
   const e = a[0];
@@ -13,7 +13,7 @@ const O = (a) => {
     (l) => typeof l == "number"
   );
   return e.stage && e.value ? "funnel" : e.label && e.value ? "donut" : e.category && e.value ? "polararea" : e.x !== void 0 && e.y !== void 0 && e.value !== void 0 ? "heatmap" : e.name && e.value && Array.isArray(e.children) ? "treemap" : Array.isArray(e.y) && e.y.length === 4 ? "candlestick" : Array.isArray(e.y) && e.y.length === 5 ? "boxplot" : Array.isArray(e.y) && e.y.length === 2 ? "rangebar" : e.x !== void 0 && e.y !== void 0 && e.r !== void 0 ? "bubble" : typeof e.x == "number" && typeof e.y == "number" ? "scatter" : e.x && !isNaN(Date.parse(e.x)) ? "line" : e.start !== void 0 && e.end !== void 0 ? "slope" : n.length > 1 ? "mixed" : (e.x !== void 0 && e.y !== void 0, "bar");
-}, M = {
+}, q = {
   line: "xy",
   area: "xy",
   scatter: "xy",
@@ -28,14 +28,14 @@ const O = (a) => {
   treemap: "heatmap",
   rangebar: "range",
   candlestick: "range"
-}, j = (a, e) => {
-  const n = M[a] || "xy";
-  let l = [], s = [], b = [];
+}, H = (a, e) => {
+  const n = q[a] || "xy";
+  let l = [], s = [], h = [];
   if (!e || e.length === 0)
-    return { series: l, labels: s, categories: b };
+    return { series: l, labels: s, categories: h };
   const g = e[0], i = Object.keys(g).filter(
     (r) => typeof g[r] == "number"
-  ), o = Object.keys(g).find(
+  ), c = Object.keys(g).find(
     (r) => typeof g[r] == "string"
   );
   switch (n) {
@@ -45,9 +45,9 @@ const O = (a) => {
       );
       break;
     case "category":
-      b = e.map((r) => r.x ?? r.category ?? r.stage ?? r[o]), i.length > 1 ? l = i.map((r) => ({
+      h = e.map((r) => r.x ?? r.category ?? r.stage ?? r[c]), i.length > 1 ? l = i.map((r) => ({
         name: r,
-        data: e.map((m) => m[r])
+        data: e.map((b) => b[r])
       })) : l = [{
         name: i[0] || "Series 1",
         data: e.map((r) => r.y ?? r.value)
@@ -75,9 +75,9 @@ const O = (a) => {
         }))
       }] : i.length > 1 ? l = i.map((r) => ({
         name: r,
-        data: e.map((m) => ({
-          x: m.x ?? m[o],
-          y: m[r]
+        data: e.map((b) => ({
+          x: b.x ?? b[c],
+          y: b[r]
         }))
       })) : l = [{
         name: "Series 1",
@@ -87,30 +87,35 @@ const O = (a) => {
         }))
       }];
   }
-  return { series: l, labels: s, categories: b };
-}, D = X(
-  ({ data: a, type: e, options: n = {}, height: l = 350, title: s }, b) => {
-    const g = x(null), i = x(null), o = x(null), r = F(() => e || (Array.isArray(a[0]) ? a.map((t) => O(t)) : O(a)), [a, e]), m = F(() => {
-      var v, d, A, w, z, k, S;
-      const t = Array.isArray(r) ? String(r[0]).toLowerCase() : String(r).toLowerCase();
-      let y = [], c = [], u = [];
+  return { series: l, labels: s, categories: h };
+}, W = V(
+  ({ data: a, type: e, options: n = {}, height: l = 350, title: s }, h) => {
+    const g = d(null), i = d(null), c = d(null), [r, b] = R(!1);
+    j(() => {
+      const t = () => b(!!document.fullscreenElement);
+      return document.addEventListener("fullscreenchange", t), () => document.removeEventListener("fullscreenchange", t);
+    }, []);
+    const u = X(() => e || (Array.isArray(a[0]) ? a.map((t) => C(t)) : C(a)), [a, e]), p = X(() => {
+      var A, w, z, S, F, k, E;
+      const t = Array.isArray(u) ? String(u[0]).toLowerCase() : String(u).toLowerCase();
+      let y = [], o = [], f = [];
       if (Array.isArray(a[0]))
-        y = a.map((C, p) => {
-          const L = Array.isArray(e) && e[p] || (Array.isArray(r) ? r[p] : r), H = j(L, C);
+        y = a.map((I, x) => {
+          const L = Array.isArray(e) && e[x] || (Array.isArray(u) ? u[x] : u), M = H(L, I);
           return {
-            name: `Series ${p + 1}`,
+            name: `Series ${x + 1}`,
             type: L,
-            ...H.series[0]
+            ...M.series[0]
           };
         });
       else {
-        const h = j(r, a);
-        y = h.series, c = h.labels, u = h.categories;
+        const v = H(u, a);
+        y = v.series, o = v.labels, f = v.categories;
       }
-      const f = {
+      const m = {
         ...n,
         chart: {
-          type: t === "column" ? "bar" : t,
+          type: t === "funnel" || t === "column" ? "bar" : t,
           height: "100%",
           toolbar: {
             show: !0,
@@ -124,9 +129,7 @@ const O = (a) => {
               reset: !0,
               customIcons: [
                 {
-                  icon: `<svg stroke="currentColor" fill="#9ca3af" stroke-width="0" viewBox="0 0 16 16" height="20" width="20" xmlns="http://www.w3.org/2000/svg" style="display:block; margin: 3px; color: #666;">
-                  <path d="M5.828 10.172L3 13V10H2v4h4v-1H3l2.828-2.828-1.414-1.414zm4.344 0l1.414 1.414L13 10.172V13h1V9h-4v1h3l-2.828 1.172zM5.828 5.828L3 3v3H2V2h4v1H3l2.828 2.828-1.414-1.414zm4.344 0l1.414-1.414L13 5.828V3h1v4h-4V6h3l-2.828-2.828z"></path>
-                </svg>`,
+                  icon: r ? '<svg fill="#9ca3af" viewBox="0 0 24 24" width="18" height="18"><path d="M4 14h6v6H8v-4H4v-2zm10 0h6v2h-4v4h-2v-6zM4 4h2v4h4v2H4V4zm10 0h2v4h4v2h-6V4z"/></svg>' : '<svg fill="#9ca3af" viewBox="0 0 1000 1000" width="18" height="18"><path d="M702 82c-35-18-77 3-77 43v80l-160 160c-18 18-18 47 0 65s47 18 65 0l160-160h80c40 0 61-42 43-77L702 82zM298 918c35 18 77-3 77-43v-80l160-160c18-18 18-47 0-65s-47-18-65 0l-160 160h-80c-40 0-61 42-43 77l111 111z"/></svg>',
                   index: 6,
                   title: "Full View",
                   class: "custom-fullscreen-icon",
@@ -142,15 +145,15 @@ const O = (a) => {
           ...n.chart
         },
         title: {
-          text: typeof s == "string" ? s : (s == null ? void 0 : s.text) || ((v = n.title) == null ? void 0 : v.text) || void 0,
-          align: (typeof s == "object" ? s == null ? void 0 : s.align : (d = n.title) == null ? void 0 : d.align) || "left",
-          margin: ((A = n.title) == null ? void 0 : A.margin) || 10,
+          text: typeof s == "string" ? s : (s == null ? void 0 : s.text) || ((A = n.title) == null ? void 0 : A.text) || void 0,
+          align: (typeof s == "object" ? s == null ? void 0 : s.align : (w = n.title) == null ? void 0 : w.align) || "left",
+          margin: ((z = n.title) == null ? void 0 : z.margin) || 10,
           style: {
             fontSize: "14px",
             fontWeight: "bold",
             fontFamily: "Helvetica, Arial, sans-serif",
             color: "#263238",
-            ...(w = n.title) == null ? void 0 : w.style
+            ...(S = n.title) == null ? void 0 : S.style
           }
         },
         colors: n.colors || [
@@ -160,7 +163,7 @@ const O = (a) => {
           "green"
         ],
         fill: {
-          type: ((z = n.fill) == null ? void 0 : z.type) || "solid",
+          type: ((F = n.fill) == null ? void 0 : F.type) || "solid",
           ...n.fill
         },
         series: y,
@@ -178,54 +181,54 @@ const O = (a) => {
           ...n.grid
         }
       };
-      return c != null && c.length && (f.labels = c), u != null && u.length && (f.xaxis = { ...n.xaxis, categories: u }), (t === "bar" || t === "column") && (f.plotOptions = {
+      return o != null && o.length && (m.labels = o), f != null && f.length && (m.xaxis = { ...n.xaxis, categories: f }), (t === "bar" || t === "column") && (m.plotOptions = {
         ...n.plotOptions,
         bar: {
-          ...((S = n.plotOptions) == null ? void 0 : S.bar) || {},
+          ...((E = n.plotOptions) == null ? void 0 : E.bar) || {},
           horizontal: !1
         }
-      }), f;
-    }, [a, r, n, l, s]);
-    return E(b, () => ({
+      }), m;
+    }, [a, u, n, l, s]);
+    return B(h, () => ({
       zoomIn() {
-        var f;
-        const t = o.current;
-        if (!((f = t == null ? void 0 : t.w) != null && f.globals))
+        var m;
+        const t = c.current;
+        if (!((m = t == null ? void 0 : t.w) != null && m.globals))
           return;
-        const { minX: y, maxX: c } = t.w.globals, u = (c - y) * 0.1;
-        t.zoomX(y + u, c - u);
+        const { minX: y, maxX: o } = t.w.globals, f = (o - y) * 0.1;
+        t.zoomX(y + f, o - f);
       },
       zoomOut() {
-        var f;
-        const t = o.current;
-        if (!((f = t == null ? void 0 : t.w) != null && f.globals))
+        var m;
+        const t = c.current;
+        if (!((m = t == null ? void 0 : t.w) != null && m.globals))
           return;
-        const { minX: y, maxX: c } = t.w.globals, u = (c - y) * 0.1;
-        t.zoomX(y - u, c + u);
+        const { minX: y, maxX: o } = t.w.globals, f = (o - y) * 0.1;
+        t.zoomX(y - f, o + f);
       },
       reset() {
         var t;
-        (t = o.current) == null || t.resetSeries();
+        (t = c.current) == null || t.resetSeries();
       },
       toggleFullscreen() {
         i.current && (document.fullscreenElement ? document.exitFullscreen() : i.current.requestFullscreen());
       }
-    })), I(() => {
+    })), j(() => {
       if (g.current)
-        return o.current ? o.current.updateOptions(m, !0, !0) : (o.current = new R(g.current, m), o.current.render()), () => {
+        return c.current ? c.current.updateOptions(p, !0, !0) : (c.current = new T(g.current, p), c.current.render()), () => {
           var t;
-          (t = o.current) == null || t.destroy(), o.current = null;
+          (t = c.current) == null || t.destroy(), c.current = null;
         };
-    }, [m]), /* @__PURE__ */ V(
+    }, [p]), /* @__PURE__ */ O(
       "div",
       {
         ref: i,
         style: { height: l, width: "100%", background: "#fff" },
-        children: /* @__PURE__ */ V("div", { ref: g })
+        children: /* @__PURE__ */ O("div", { ref: g })
       }
     );
   }
 );
 export {
-  D as VizlyChart
+  W as VizlyChart
 };

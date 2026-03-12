@@ -1,6 +1,7 @@
 import React, {
   useEffect,
   useRef,
+  useState,
   useMemo,
   forwardRef,
   useImperativeHandle
@@ -30,7 +31,14 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     const chartRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<ApexCharts | null>(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
+    useEffect(() => {
+      const handler = () => setIsFullscreen(!!document.fullscreenElement);
+      document.addEventListener("fullscreenchange", handler);
+      return () => document.removeEventListener("fullscreenchange", handler);
+    }, []);
+   
     const finalType = useMemo(() => {
       if (type) return type;
       if (Array.isArray(data[0])) {
@@ -72,7 +80,7 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       const cfg: any = {
         ...options,
         chart: {
-          type: t === "column" ? "bar" : t,
+          type: t === "funnel" || t === "column" ? "bar" : t,
           height: "100%",
           toolbar: {
             show: true,
@@ -86,9 +94,9 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
               reset: true,
               customIcons: [
                 {
-                  icon: `<svg stroke="currentColor" fill="#9ca3af" stroke-width="0" viewBox="0 0 16 16" height="20" width="20" xmlns="http://www.w3.org/2000/svg" style="display:block; margin: 3px; color: #666;">
-                  <path d="M5.828 10.172L3 13V10H2v4h4v-1H3l2.828-2.828-1.414-1.414zm4.344 0l1.414 1.414L13 10.172V13h1V9h-4v1h3l-2.828 1.172zM5.828 5.828L3 3v3H2V2h4v1H3l2.828 2.828-1.414-1.414zm4.344 0l1.414-1.414L13 5.828V3h1v4h-4V6h3l-2.828-2.828z"></path>
-                </svg>`,
+                  icon: isFullscreen 
+                    ? `<svg fill="#9ca3af" viewBox="0 0 24 24" width="18" height="18"><path d="M4 14h6v6H8v-4H4v-2zm10 0h6v2h-4v4h-2v-6zM4 4h2v4h4v2H4V4zm10 0h2v4h4v2h-6V4z"/></svg>` 
+                    : `<svg fill="#9ca3af" viewBox="0 0 1000 1000" width="18" height="18"><path d="M702 82c-35-18-77 3-77 43v80l-160 160c-18 18-18 47 0 65s47 18 65 0l160-160h80c40 0 61-42 43-77L702 82zM298 918c35 18 77-3 77-43v-80l160-160c18-18 18-47 0-65s-47-18-65 0l-160 160h-80c-40 0-61 42-43 77l111 111z"/></svg>`,
                   index: 6, 
                   title: "Full View",
                   class: 'custom-fullscreen-icon',
@@ -156,6 +164,7 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
         cfg.plotOptions = {
           ...options.plotOptions,
           bar: {
+            
             ...(options.plotOptions?.bar || {}),
             horizontal: false,
           },
@@ -163,7 +172,7 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       }
 
       return cfg;
-    }, [data, finalType, options, height, title]); // Added title to dependency array
+    }, [data, finalType, options, height, title]); 
 
     useImperativeHandle(ref, () => ({
       zoomIn() {
