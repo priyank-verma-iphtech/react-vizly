@@ -7,6 +7,11 @@ export declare interface VizlyProps {
     type?: string | string[];
     options?: any;
     height?: number | string;
+    title?: string | {
+        text: string;
+        align?: 'left' | 'center' | 'right';
+        style?: any;
+    };
 }
 
 export declare interface VizlyRef {

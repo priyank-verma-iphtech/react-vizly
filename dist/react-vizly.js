@@ -1,7 +1,7 @@
-import { jsx as w } from "react/jsx-runtime";
-import { forwardRef as X, useRef as p, useMemo as z, useImperativeHandle as j, useEffect as C } from "react";
-import E from "apexcharts";
-const S = (a) => {
+import { jsx as V } from "react/jsx-runtime";
+import { forwardRef as X, useRef as x, useMemo as F, useImperativeHandle as E, useEffect as I } from "react";
+import R from "apexcharts";
+const O = (a) => {
   if (!a || a.length === 0)
     return "bar";
   const e = a[0];
@@ -13,7 +13,7 @@ const S = (a) => {
     (l) => typeof l == "number"
   );
   return e.stage && e.value ? "funnel" : e.label && e.value ? "donut" : e.category && e.value ? "polararea" : e.x !== void 0 && e.y !== void 0 && e.value !== void 0 ? "heatmap" : e.name && e.value && Array.isArray(e.children) ? "treemap" : Array.isArray(e.y) && e.y.length === 4 ? "candlestick" : Array.isArray(e.y) && e.y.length === 5 ? "boxplot" : Array.isArray(e.y) && e.y.length === 2 ? "rangebar" : e.x !== void 0 && e.y !== void 0 && e.r !== void 0 ? "bubble" : typeof e.x == "number" && typeof e.y == "number" ? "scatter" : e.x && !isNaN(Date.parse(e.x)) ? "line" : e.start !== void 0 && e.end !== void 0 ? "slope" : n.length > 1 ? "mixed" : (e.x !== void 0 && e.y !== void 0, "bar");
-}, L = {
+}, M = {
   line: "xy",
   area: "xy",
   scatter: "xy",
@@ -28,28 +28,28 @@ const S = (a) => {
   treemap: "heatmap",
   rangebar: "range",
   candlestick: "range"
-}, k = (a, e) => {
-  const n = L[a] || "xy";
-  let l = [], b = [], y = [];
+}, j = (a, e) => {
+  const n = M[a] || "xy";
+  let l = [], s = [], b = [];
   if (!e || e.length === 0)
-    return { series: l, labels: b, categories: y };
-  const c = e[0], s = Object.keys(c).filter(
-    (r) => typeof c[r] == "number"
-  ), i = Object.keys(c).find(
-    (r) => typeof c[r] == "string"
+    return { series: l, labels: s, categories: b };
+  const g = e[0], i = Object.keys(g).filter(
+    (r) => typeof g[r] == "number"
+  ), o = Object.keys(g).find(
+    (r) => typeof g[r] == "string"
   );
   switch (n) {
     case "circular":
-      l = e.map((r) => r.value ?? r.y ?? r), b = e.map(
+      l = e.map((r) => r.value ?? r.y ?? r), s = e.map(
         (r) => r.label ?? r.category ?? r.name ?? r.x
       );
       break;
     case "category":
-      y = e.map((r) => r.x ?? r.category ?? r.stage ?? r[i]), s.length > 1 ? l = s.map((r) => ({
+      b = e.map((r) => r.x ?? r.category ?? r.stage ?? r[o]), i.length > 1 ? l = i.map((r) => ({
         name: r,
-        data: e.map((t) => t[r])
+        data: e.map((m) => m[r])
       })) : l = [{
-        name: s[0] || "Series 1",
+        name: i[0] || "Series 1",
         data: e.map((r) => r.y ?? r.value)
       }];
       break;
@@ -73,11 +73,11 @@ const S = (a) => {
           y: r.y,
           r: r.r
         }))
-      }] : s.length > 1 ? l = s.map((r) => ({
+      }] : i.length > 1 ? l = i.map((r) => ({
         name: r,
-        data: e.map((t) => ({
-          x: t.x ?? t[i],
-          y: t[r]
+        data: e.map((m) => ({
+          x: m.x ?? m[o],
+          y: m[r]
         }))
       })) : l = [{
         name: "Series 1",
@@ -87,33 +87,31 @@ const S = (a) => {
         }))
       }];
   }
-  return { series: l, labels: b, categories: y };
-}, R = X(
-  ({ data: a, type: e, options: n = {}, height: l = 350 }, b) => {
-    const y = p(null), c = p(null), s = p(null), i = z(() => e || (Array.isArray(a[0]) ? a.map((t) => S(t)) : S(a)), [a, e]), r = z(() => {
-      var x, v, d;
-      const t = Array.isArray(i) ? String(i[0]).toLowerCase() : String(i).toLowerCase();
-      let m = [], o = [], u = [];
+  return { series: l, labels: s, categories: b };
+}, D = X(
+  ({ data: a, type: e, options: n = {}, height: l = 350, title: s }, b) => {
+    const g = x(null), i = x(null), o = x(null), r = F(() => e || (Array.isArray(a[0]) ? a.map((t) => O(t)) : O(a)), [a, e]), m = F(() => {
+      var v, d, A, w, z, k, S;
+      const t = Array.isArray(r) ? String(r[0]).toLowerCase() : String(r).toLowerCase();
+      let y = [], c = [], u = [];
       if (Array.isArray(a[0]))
-        m = a.map((O, h) => {
-          const A = Array.isArray(e) && e[h] || (Array.isArray(i) ? i[h] : i), F = k(A, O);
+        y = a.map((C, p) => {
+          const L = Array.isArray(e) && e[p] || (Array.isArray(r) ? r[p] : r), H = j(L, C);
           return {
-            name: `Series ${h + 1}`,
-            type: A,
-            ...F.series[0]
+            name: `Series ${p + 1}`,
+            type: L,
+            ...H.series[0]
           };
         });
       else {
-        const g = k(i, a);
-        m = g.series, o = g.labels, u = g.categories;
+        const h = j(r, a);
+        y = h.series, c = h.labels, u = h.categories;
       }
       const f = {
         ...n,
-        // Spread early so defaults can override or be overridden
         chart: {
           type: t === "column" ? "bar" : t,
           height: "100%",
-          // Use 100% of the container ref
           toolbar: {
             show: !0,
             tools: {
@@ -126,11 +124,14 @@ const S = (a) => {
               reset: !0,
               customIcons: [
                 {
-                  icon: '<svg fill="#000000" viewBox="0 0 24 24" width="20px" height="20px"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>',
+                  icon: `<svg stroke="currentColor" fill="#9ca3af" stroke-width="0" viewBox="0 0 16 16" height="20" width="20" xmlns="http://www.w3.org/2000/svg" style="display:block; margin: 3px; color: #666;">
+                  <path d="M5.828 10.172L3 13V10H2v4h4v-1H3l2.828-2.828-1.414-1.414zm4.344 0l1.414 1.414L13 10.172V13h1V9h-4v1h3l-2.828 1.172zM5.828 5.828L3 3v3H2V2h4v1H3l2.828 2.828-1.414-1.414zm4.344 0l1.414-1.414L13 5.828V3h1v4h-4V6h3l-2.828-2.828z"></path>
+                </svg>`,
                   index: 6,
+                  title: "Full View",
                   class: "custom-fullscreen-icon",
                   click: () => {
-                    c.current && (document.fullscreenElement ? document.exitFullscreen() : c.current.requestFullscreen());
+                    i.current && (document.fullscreenElement ? document.exitFullscreen() : i.current.requestFullscreen());
                   }
                 }
               ]
@@ -140,7 +141,18 @@ const S = (a) => {
           animations: { enabled: !0 },
           ...n.chart
         },
-        // Accept any color format (RGBA, Hex, HSL) from user options
+        title: {
+          text: typeof s == "string" ? s : (s == null ? void 0 : s.text) || ((v = n.title) == null ? void 0 : v.text) || void 0,
+          align: (typeof s == "object" ? s == null ? void 0 : s.align : (d = n.title) == null ? void 0 : d.align) || "left",
+          margin: ((A = n.title) == null ? void 0 : A.margin) || 10,
+          style: {
+            fontSize: "14px",
+            fontWeight: "bold",
+            fontFamily: "Helvetica, Arial, sans-serif",
+            color: "#263238",
+            ...(w = n.title) == null ? void 0 : w.style
+          }
+        },
         colors: n.colors || [
           "rgba(0, 143, 251, 0.85)",
           "#FEB019",
@@ -148,13 +160,12 @@ const S = (a) => {
           "green"
         ],
         fill: {
-          // Set type to 'solid' by default to respect RGBA transparency
-          type: ((x = n.fill) == null ? void 0 : x.type) || "solid",
+          type: ((z = n.fill) == null ? void 0 : z.type) || "solid",
           ...n.fill
         },
-        series: m,
+        series: y,
         dataLabels: {
-          enabled: ((v = n.dataLabels) == null ? void 0 : v.enabled) ?? !1,
+          enabled: ((k = n.dataLabels) == null ? void 0 : k.enabled) ?? !1,
           ...n.dataLabels
         },
         tooltip: {
@@ -167,54 +178,54 @@ const S = (a) => {
           ...n.grid
         }
       };
-      return o != null && o.length && (f.labels = o), u != null && u.length && (f.xaxis = { ...n.xaxis, categories: u }), (t === "bar" || t === "column") && (f.plotOptions = {
+      return c != null && c.length && (f.labels = c), u != null && u.length && (f.xaxis = { ...n.xaxis, categories: u }), (t === "bar" || t === "column") && (f.plotOptions = {
         ...n.plotOptions,
         bar: {
-          ...((d = n.plotOptions) == null ? void 0 : d.bar) || {},
+          ...((S = n.plotOptions) == null ? void 0 : S.bar) || {},
           horizontal: !1
         }
       }), f;
-    }, [a, i, n, l]);
-    return j(b, () => ({
+    }, [a, r, n, l, s]);
+    return E(b, () => ({
       zoomIn() {
         var f;
-        const t = s.current;
+        const t = o.current;
         if (!((f = t == null ? void 0 : t.w) != null && f.globals))
           return;
-        const { minX: m, maxX: o } = t.w.globals, u = (o - m) * 0.1;
-        t.zoomX(m + u, o - u);
+        const { minX: y, maxX: c } = t.w.globals, u = (c - y) * 0.1;
+        t.zoomX(y + u, c - u);
       },
       zoomOut() {
         var f;
-        const t = s.current;
+        const t = o.current;
         if (!((f = t == null ? void 0 : t.w) != null && f.globals))
           return;
-        const { minX: m, maxX: o } = t.w.globals, u = (o - m) * 0.1;
-        t.zoomX(m - u, o + u);
+        const { minX: y, maxX: c } = t.w.globals, u = (c - y) * 0.1;
+        t.zoomX(y - u, c + u);
       },
       reset() {
         var t;
-        (t = s.current) == null || t.resetSeries();
+        (t = o.current) == null || t.resetSeries();
       },
       toggleFullscreen() {
-        c.current && (document.fullscreenElement ? document.exitFullscreen() : c.current.requestFullscreen());
+        i.current && (document.fullscreenElement ? document.exitFullscreen() : i.current.requestFullscreen());
       }
-    })), C(() => {
-      if (y.current)
-        return s.current ? s.current.updateOptions(r, !0, !0) : (s.current = new E(y.current, r), s.current.render()), () => {
+    })), I(() => {
+      if (g.current)
+        return o.current ? o.current.updateOptions(m, !0, !0) : (o.current = new R(g.current, m), o.current.render()), () => {
           var t;
-          (t = s.current) == null || t.destroy(), s.current = null;
+          (t = o.current) == null || t.destroy(), o.current = null;
         };
-    }, [r]), /* @__PURE__ */ w(
+    }, [m]), /* @__PURE__ */ V(
       "div",
       {
-        ref: c,
+        ref: i,
         style: { height: l, width: "100%", background: "#fff" },
-        children: /* @__PURE__ */ w("div", { ref: y })
+        children: /* @__PURE__ */ V("div", { ref: g })
       }
     );
   }
 );
 export {
-  R as VizlyChart
+  D as VizlyChart
 };
