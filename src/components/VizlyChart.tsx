@@ -9,6 +9,8 @@ import React, {
 import ApexCharts from "apexcharts";
 import { detectChartType } from "../utils/detectChartType";
 import { transformData } from "../utils/transformData";
+import ReactDOMServer from "react-dom/server";
+import { BsArrowsAngleExpand } from "react-icons/bs";
 
 export interface VizlyProps {
   data: any[] | any[][];
@@ -31,13 +33,12 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     const chartRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<ApexCharts | null>(null);
-    const [isFullscreen, setIsFullscreen] = useState(false);
+    const iconString = ReactDOMServer.renderToString(<BsArrowsAngleExpand size={18} />);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const modalChartRef = useRef<HTMLDivElement>(null);
+    const modalInstance = useRef<ApexCharts | null>(null);
 
-    useEffect(() => {
-      const handler = () => setIsFullscreen(!!document.fullscreenElement);
-      document.addEventListener("fullscreenchange", handler);
-      return () => document.removeEventListener("fullscreenchange", handler);
-    }, []);
+    
    
     const finalType = useMemo(() => {
       if (type) return type;
@@ -94,20 +95,10 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
               reset: true,
               customIcons: [
                 {
-                  icon: isFullscreen 
-                    ? `<svg fill="#9ca3af" viewBox="0 0 24 24" width="18" height="18"><path d="M4 14h6v6H8v-4H4v-2zm10 0h6v2h-4v4h-2v-6zM4 4h2v4h4v2H4V4zm10 0h2v4h4v2h-6V4z"/></svg>` 
-                    : `<svg fill="#9ca3af" viewBox="0 0 1000 1000" width="18" height="18"><path d="M702 82c-35-18-77 3-77 43v80l-160 160c-18 18-18 47 0 65s47 18 65 0l160-160h80c40 0 61-42 43-77L702 82zM298 918c35 18 77-3 77-43v-80l160-160c18-18 18-47 0-65s-47-18-65 0l-160 160h-80c-40 0-61 42-43 77l111 111z"/></svg>`,
+                  icon: iconString,
                   index: 6, 
-                  title: "Full View",
-                  class: 'custom-fullscreen-icon',
-                  click: () => {
-                    if (!containerRef.current) return;
-                    if (!document.fullscreenElement) {
-                      containerRef.current.requestFullscreen();
-                    } else {
-                      document.exitFullscreen();
-                    }
-                  }
+                  click: ()=> setIsModalOpen
+                  
                 }
               ],
             },
@@ -152,9 +143,14 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
             ...options.plotOptions?.bar,
           },
           bubble: {
-            minBubbleRadius: 5,
-            maxBubbleRadius: 20,
-            ...options.plotOptions?.bubble,
+            minBubbleRadius: options.plotOptions?.bubble?.minBubbleRadius ?? 5,
+            maxBubbleRadius: options.plotOptions?.bubble?.maxBubbleRadius ?? 20,
+          },
+          // Radar/RadialBar often need explicit sizing to render well
+          radar: { size: options.plotOptions?.radar?.size ?? 140 },
+          radialBar: {
+            hollow: { size: '70%' },
+            ...options.plotOptions?.radialBar
           }
         },
         tooltip: {
@@ -185,36 +181,11 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       }
 
       return cfg;
-    }, [data, finalType, options, height, title]); 
+    }, [data, finalType, options, height, title,iconString]); 
 
-    useImperativeHandle(ref, () => ({
-      zoomIn() {
-        const chart = chartInstance.current as any;
-        if (!chart?.w?.globals) return;
-        const { minX, maxX } = chart.w.globals;
-        const diff = (maxX - minX) * 0.1;
-        chart.zoomX(minX + diff, maxX - diff);
-      },
-      zoomOut() {
-        const chart = chartInstance.current as any;
-        if (!chart?.w?.globals) return;
-        const { minX, maxX } = chart.w.globals;
-        const diff = (maxX - minX) * 0.1;
-        chart.zoomX(minX - diff, maxX + diff);
-      },
-      reset() {
-        chartInstance.current?.resetSeries();
-      },
-      toggleFullscreen() {
-        if (!containerRef.current) return;
-        if (!document.fullscreenElement) {
-          containerRef.current.requestFullscreen();
-        } else {
-          document.exitFullscreen();
-        }
-      }
-    }));
 
+
+   
     useEffect(() => {
       if (!chartRef.current) return;
       if (!chartInstance.current) {
@@ -229,12 +200,71 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       };
     }, [config]);
 
+    // --- RENDER MODAL CHART ---
+    useEffect(() => {
+      if (isModalOpen && modalChartRef.current) {
+        // Create a separate instance for the modal
+        modalInstance.current = new ApexCharts(modalChartRef.current, {
+          ...config,
+          chart: { ...config.chart, toolbar: { show: false } } // Clean view for modal
+        });
+        modalInstance.current.render();
+      }
+      return () => {
+        modalInstance.current?.destroy();
+        modalInstance.current = null;
+      };
+    }, [isModalOpen, config]);
+
+
+    useImperativeHandle(ref, () => ({
+      zoomIn: () => chartInstance.current?.zoomX(undefined as any, undefined as any),
+      zoomOut: () => chartInstance.current?.zoomX(undefined as any, undefined as any),
+      reset: () => chartInstance.current?.resetSeries(),
+      toggleFullscreen: () => setIsModalOpen(!isModalOpen)
+    }));
     return (
-      <div 
-        ref={containerRef} 
-        style={{ height: height, width: '100%', background: '#fff' }}
-      >
-        <div ref={chartRef} />
+      <div style={{ height, width: '100%', position: 'relative' }}>
+        <div ref={chartRef} style={{ height: '100%', width: '100%' }} />
+
+        {/* CUSTOM CENTERED SMALL MODAL */}
+        {isModalOpen && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+          }}>
+            <div style={{
+              width: '90%',
+              maxWidth: '600px', // Makes it "not so large"
+              height: '450px',   // Fixed height for the modal
+              background: '#fff',
+              borderRadius: '12px',
+              padding: '40px 20px 20px 20px',
+              position: 'relative',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+            }}>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                style={{
+                  position: 'absolute',
+                  top: 10,
+                  right: 15,
+                  border: 'none',
+                  background: 'transparent',
+                  fontSize: '22px',
+                  cursor: 'pointer'
+                }}
+              >✕</button>
+              
+              <div ref={modalChartRef} style={{ height: '100%', width: '100%' }} />
+            </div>
+          </div>
+        )}
       </div>
     );
   }
