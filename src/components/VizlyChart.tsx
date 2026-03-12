@@ -17,7 +17,6 @@ export interface VizlyProps {
   type?: string | string[];
   options?: any;
   height?: number | string;
-  // RESTORED: Add title to the interface so TS doesn't complain
   title?: string | { text: string; align?: 'left' | 'center' | 'right'; style?: any };
 }
 
@@ -29,11 +28,11 @@ export interface VizlyRef {
 }
 
 const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
-  ({ data, type, options = {}, height = 350, title }, ref) => { // Destructured title here
+  ({ data, type, options = {}, height = 350, title }, ref) => { 
     const chartRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<ApexCharts | null>(null);
-    const iconString = ReactDOMServer.renderToString(<BsArrowsAngleExpand size={18} />);
+    const iconString = ReactDOMServer.renderToString(<BsArrowsAngleExpand size={12} />);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const modalChartRef = useRef<HTMLDivElement>(null);
     const modalInstance = useRef<ApexCharts | null>(null);
@@ -97,7 +96,7 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
                 {
                   icon: iconString,
                   index: 6, 
-                  click: ()=> setIsModalOpen
+                  click: ()=> setIsModalOpen(true)
                   
                 }
               ],

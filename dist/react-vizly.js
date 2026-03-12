@@ -3436,7 +3436,7 @@ const io = zi(
   ({ data: u, type: l, options: f = {}, height: E = 350, title: C }, M) => {
     const g = _t(null);
     _t(null);
-    const I = _t(null), j = Bi.renderToString(/* @__PURE__ */ Mt(eo, { size: 18 })), [w, P] = Li(!1), ee = _t(null), B = _t(null), Y = ln(() => l || (Array.isArray(u[0]) ? u.map((T) => fn(T)) : fn(u)), [u, l]), ne = ln(() => {
+    const I = _t(null), j = Bi.renderToString(/* @__PURE__ */ Mt(eo, { size: 12 })), [w, P] = Li(!1), ee = _t(null), B = _t(null), Y = ln(() => l || (Array.isArray(u[0]) ? u.map((T) => fn(T)) : fn(u)), [u, l]), ne = ln(() => {
       var ge, $e, Fe, me, L, U, Oe, X, Xe, ye, je, ze, Ge, Ze, V;
       const T = Array.isArray(Y) ? String(Y[0]).toLowerCase() : String(Y).toLowerCase();
       let ve = [], ue = [], ce = [];
@@ -3472,7 +3472,7 @@ const io = zi(
                 {
                   icon: j,
                   index: 6,
-                  click: () => P
+                  click: () => P(!0)
                 }
               ]
             },
