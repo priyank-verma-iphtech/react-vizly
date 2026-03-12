@@ -14,6 +14,8 @@ export interface VizlyProps {
   type?: string | string[];
   options?: any;
   height?: number | string;
+  // RESTORED: Add title to the interface so TS doesn't complain
+  title?: string | { text: string; align?: 'left' | 'center' | 'right'; style?: any };
 }
 
 export interface VizlyRef {
@@ -24,7 +26,7 @@ export interface VizlyRef {
 }
 
 const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
-  ({ data, type, options = {}, height = 350 }, ref) => {
+  ({ data, type, options = {}, height = 350, title }, ref) => { // Destructured title here
     const chartRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<ApexCharts | null>(null);
@@ -46,7 +48,6 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       let labels: any = [];
       let categories: any = [];
 
-      // Logic to handle multiple datasets or single dataset
       if (Array.isArray(data[0])) {
         const datasets = data as any[][];
         series = datasets.map((d, i) => {
@@ -69,10 +70,10 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       }
 
       const cfg: any = {
-        ...options, // Spread early so defaults can override or be overridden
+        ...options,
         chart: {
           type: t === "column" ? "bar" : t,
-          height: "100%", // Use 100% of the container ref
+          height: "100%",
           toolbar: {
             show: true,
             tools: {
@@ -85,8 +86,11 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
               reset: true,
               customIcons: [
                 {
-                  icon: '<svg fill="#000000" viewBox="0 0 24 24" width="20px" height="20px"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>',
+                  icon: `<svg stroke="currentColor" fill="#9ca3af" stroke-width="0" viewBox="0 0 16 16" height="20" width="20" xmlns="http://www.w3.org/2000/svg" style="display:block; margin: 3px; color: #666;">
+                  <path d="M5.828 10.172L3 13V10H2v4h4v-1H3l2.828-2.828-1.414-1.414zm4.344 0l1.414 1.414L13 10.172V13h1V9h-4v1h3l-2.828 1.172zM5.828 5.828L3 3v3H2V2h4v1H3l2.828 2.828-1.414-1.414zm4.344 0l1.414-1.414L13 5.828V3h1v4h-4V6h3l-2.828-2.828z"></path>
+                </svg>`,
                   index: 6, 
+                  title: "Full View",
                   class: 'custom-fullscreen-icon',
                   click: () => {
                     if (!containerRef.current) return;
@@ -104,20 +108,29 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
           animations: { enabled: true },
           ...options.chart,
         },
-        // Accept any color format (RGBA, Hex, HSL) from user options
+       
+        title: {
+          text: typeof title === 'string' ? title : (title?.text || options.title?.text || undefined),
+          align: (typeof title === 'object' ? title?.align : options.title?.align) || 'left',
+          margin: options.title?.margin || 10,
+          style: {
+            fontSize: '14px',
+            fontWeight: 'bold',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#263238',
+            ...options.title?.style
+          },
+        },
         colors: options.colors || [
           'rgba(0, 143, 251, 0.85)', 
           '#FEB019', 
           'hsl(145, 63%, 42%)', 
           'green'
         ],
-    
         fill: {
-          // Set type to 'solid' by default to respect RGBA transparency
           type: options.fill?.type || 'solid', 
           ...options.fill
         },
-    
         series,
         dataLabels: {
           enabled: options.dataLabels?.enabled ?? false,
@@ -150,7 +163,7 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       }
 
       return cfg;
-    }, [data, finalType, options, height]);
+    }, [data, finalType, options, height, title]); // Added title to dependency array
 
     useImperativeHandle(ref, () => ({
       zoomIn() {
