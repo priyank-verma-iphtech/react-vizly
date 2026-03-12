@@ -1,6 +1,6 @@
 {
   "name": "react-vizly",
-  "version": "1.0.32",
+  "version": "1.0.33",
   "type": "module",
   "description": "Custom React chart library using ApexCharts",
   "main": "./dist/react-vizly.umd.cjs",
@@ -23,7 +23,7 @@
   },
   "peerDependencies": {
     "react": ">=17.0.0",
-  "react-dom": ">=17.0.0"
+    "react-dom": ">=17.0.0"
   },
   "dependencies": {
     "apexcharts": "^4.0.0",
