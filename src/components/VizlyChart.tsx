@@ -15,6 +15,7 @@ export interface VizlyProps {
   type?: string | string[];
   options?: any;
   height?: number | string;
+  // RESTORED: Add title to the interface so TS doesn't complain
   title?: string | { text: string; align?: 'left' | 'center' | 'right'; style?: any };
 }
 
@@ -26,7 +27,7 @@ export interface VizlyRef {
 }
 
 const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
-  ({ data, type, options = {}, height = 350, title }, ref) => {
+  ({ data, type, options = {}, height = 350, title }, ref) => { // Destructured title here
     const chartRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<ApexCharts | null>(null);
@@ -37,47 +38,112 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       document.addEventListener("fullscreenchange", handler);
       return () => document.removeEventListener("fullscreenchange", handler);
     }, []);
+   
+    const finalType = useMemo(() => {
+      if (type) return type;
+      if (Array.isArray(data[0])) {
+        return (data as any[][]).map((d) => detectChartType(d));
+      }
+      return detectChartType(data as any[]);
+    }, [data, type]);
 
     const config = useMemo(() => {
-      const rawType = Array.isArray(type) ? type[0] : (type || detectChartType(Array.isArray(data[0]) ? data[0] : data));
-      const t = String(rawType).toLowerCase();
+      const t = Array.isArray(finalType)
+        ? String(finalType[0]).toLowerCase()
+        : String(finalType).toLowerCase();
 
-      const transformed = transformData(t, data as any[]);
+      let series: any = [];
+      let labels: any = [];
+      let categories: any = [];
+
+      if (Array.isArray(data[0])) {
+        const datasets = data as any[][];
+        series = datasets.map((d, i) => {
+          const chartType = Array.isArray(type)
+            ? type[i] || (Array.isArray(finalType) ? finalType[i] : finalType)
+            : Array.isArray(finalType) ? finalType[i] : finalType;
+
+          const transformed = transformData(chartType as string, d);
+          return {
+            name: `Series ${i + 1}`,
+            type: chartType,
+            ...transformed.series[0],
+          };
+        });
+      } else {
+        const transformed = transformData(finalType as string, data as any[]);
+        series = transformed.series;
+        labels = transformed.labels;
+        categories = transformed.categories;
+      }
 
       const cfg: any = {
         ...options,
         chart: {
-          // Essential: Mapping 'column' and 'funnel' to 'bar' engine
-          type: (t === "funnel" || t === "column") ? "bar" : t,
+          type: t === "funnel" || t === "column" ? "bar" : t,
           height: "100%",
-          id: options.chart?.id || `viz-${Math.random().toString(36).substr(2, 5)}`,
           toolbar: {
             show: true,
             tools: {
               download: true,
+              selection: true,
+              zoom: true,
+              zoomin: true,
+              zoomout: true,
+              pan: true,
+              reset: true,
               customIcons: [
                 {
-                  // This is the SVG path for BsArrowsAngleExpand
-                  icon: `<svg stroke="currentColor" fill="#9ca3af" stroke-width="0" viewBox="0 0 16 16" height="18" width="18" xmlns="http://www.w3.org/2000/svg"><path d="M5.828 10.172L3 13V10H2v4h4v-1H3l2.828-2.828-1.414-1.414zm4.344 0l1.414 1.414L13 10.172V13h1V9h-4v1h3l-2.828 1.172zM5.828 5.828L3 3v3H2V2h4v1H3l2.828 2.828-1.414-1.414zm4.344 0l1.414-1.414L13 5.828V3h1v4h-4V6h3l-2.828-2.828z"></path></svg>`,
-                  index: 6,
-                  title: "Toggle Fullscreen",
+                  icon: isFullscreen 
+                    ? `<svg fill="#9ca3af" viewBox="0 0 24 24" width="18" height="18"><path d="M4 14h6v6H8v-4H4v-2zm10 0h6v2h-4v4h-2v-6zM4 4h2v4h4v2H4V4zm10 0h2v4h4v2h-6V4z"/></svg>` 
+                    : `<svg fill="#9ca3af" viewBox="0 0 1000 1000" width="18" height="18"><path d="M702 82c-35-18-77 3-77 43v80l-160 160c-18 18-18 47 0 65s47 18 65 0l160-160h80c40 0 61-42 43-77L702 82zM298 918c35 18 77-3 77-43v-80l160-160c18-18 18-47 0-65s-47-18-65 0l-160 160h-80c-40 0-61 42-43 77l111 111z"/></svg>`,
+                  index: 6, 
+                  title: "Full View",
+                  class: 'custom-fullscreen-icon',
                   click: () => {
-                    if (!document.fullscreenElement) containerRef.current?.requestFullscreen();
-                    else document.exitFullscreen();
+                    if (!containerRef.current) return;
+                    if (!document.fullscreenElement) {
+                      containerRef.current.requestFullscreen();
+                    } else {
+                      document.exitFullscreen();
+                    }
                   }
                 }
               ],
             },
+            autoSelected: "zoom",
           },
+          animations: { enabled: true },
           ...options.chart,
         },
-        series: transformed.series,
-        labels: transformed.labels || options.labels, // Required for PolarArea/RadialBar
-        xaxis: {
-          categories: transformed.categories,
-          ...options.xaxis
+       
+        title: {
+          text: typeof title === 'string' ? title : (title?.text || options.title?.text || undefined),
+          align: (typeof title === 'object' ? title?.align : options.title?.align) || 'left',
+          margin: options.title?.margin || 10,
+          style: {
+            fontSize: '14px',
+            fontWeight: 'bold',
+            fontFamily: 'Helvetica, Arial, sans-serif',
+            color: '#263238',
+            ...options.title?.style
+          },
         },
-        dataLabels: { enabled: options.dataLabels?.enabled ?? false },
+        colors: options.colors || [
+          'rgba(0, 143, 251, 0.85)', 
+          '#FEB019', 
+          'hsl(145, 63%, 42%)', 
+          'green'
+        ],
+        fill: {
+          type: options.fill?.type || 'solid', 
+          ...options.fill
+        },
+        series,
+        dataLabels: {
+          enabled: options.dataLabels?.enabled ?? false,
+          ...options.dataLabels,
+        },
         plotOptions: {
           ...options.plotOptions,
           bar: {
@@ -86,71 +152,89 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
             ...options.plotOptions?.bar,
           },
           bubble: {
-            minBubbleRadius: options.plotOptions?.bubble?.minBubbleRadius ?? 5,
-            maxBubbleRadius: options.plotOptions?.bubble?.maxBubbleRadius ?? 20,
-          },
-          // Radar/RadialBar often need explicit sizing to render well
-          radar: { size: options.plotOptions?.radar?.size ?? 140 },
-          radialBar: {
-            hollow: { size: '70%' },
-            ...options.plotOptions?.radialBar
+            minBubbleRadius: 5,
+            maxBubbleRadius: 20,
+            ...options.plotOptions?.bubble,
           }
         },
-        title: {
-          text: typeof title === 'string' ? title : (title?.text || options.title?.text),
-          align: (typeof title === 'object' ? title?.align : options.title?.align) || 'left',
-          ...options.title
-        }
+        tooltip: {
+          enabled: true,
+          theme: "dark",
+          ...options.tooltip,
+        },
+        grid: {
+          show: true,
+          ...options.grid,
+        },
       };
 
-      return cfg;
-    }, [data, type, options, title, isFullscreen]);
+      if (labels?.length) cfg.labels = labels;
+      if (categories?.length) {
+        cfg.xaxis = { ...options.xaxis, categories };
+      }
 
-    // Initialize/Update Chart
+      if (t === "bar" || t === "column") {
+        cfg.plotOptions = {
+          ...options.plotOptions,
+          bar: {
+            
+            ...(options.plotOptions?.bar || {}),
+            horizontal: false,
+          },
+        };
+      }
+
+      return cfg;
+    }, [data, finalType, options, height, title]); 
+
+    useImperativeHandle(ref, () => ({
+      zoomIn() {
+        const chart = chartInstance.current as any;
+        if (!chart?.w?.globals) return;
+        const { minX, maxX } = chart.w.globals;
+        const diff = (maxX - minX) * 0.1;
+        chart.zoomX(minX + diff, maxX - diff);
+      },
+      zoomOut() {
+        const chart = chartInstance.current as any;
+        if (!chart?.w?.globals) return;
+        const { minX, maxX } = chart.w.globals;
+        const diff = (maxX - minX) * 0.1;
+        chart.zoomX(minX - diff, maxX + diff);
+      },
+      reset() {
+        chartInstance.current?.resetSeries();
+      },
+      toggleFullscreen() {
+        if (!containerRef.current) return;
+        if (!document.fullscreenElement) {
+          containerRef.current.requestFullscreen();
+        } else {
+          document.exitFullscreen();
+        }
+      }
+    }));
+
     useEffect(() => {
       if (!chartRef.current) return;
       if (!chartInstance.current) {
         chartInstance.current = new ApexCharts(chartRef.current, config);
         chartInstance.current.render();
       } else {
-        chartInstance.current.updateOptions(config);
+        chartInstance.current.updateOptions(config, true, true);
       }
+      return () => {
+        chartInstance.current?.destroy();
+        chartInstance.current = null;
+      };
     }, [config]);
-
-    useImperativeHandle(ref, () => ({
-      zoomIn: () => chartInstance.current?.zoomX(undefined as any, undefined as any),
-      zoomOut: () => chartInstance.current?.zoomX(undefined as any, undefined as any),
-      reset: () => chartInstance.current?.resetSeries(),
-      toggleFullscreen: () => {
-        if (!document.fullscreenElement) containerRef.current?.requestFullscreen();
-        else document.exitFullscreen();
-      }
-    }));
 
     return (
       <div 
         ref={containerRef} 
-        style={{ 
-          height: height, 
-          width: '100%', 
-          backgroundColor: isFullscreen ? 'rgba(0,0,0,0.5)' : '#fff', 
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'background 0.3s ease'
-        }}
+        style={{ height: height, width: '100%', background: '#fff' }}
       >
-        <div 
-          ref={chartRef} 
-          style={{ 
-            width: isFullscreen ? '70%' : '100%', // Makes it "Smaller and in Center"
-            height: isFullscreen ? '70%' : '100%',
-            backgroundColor: '#fff',
-            borderRadius: isFullscreen ? '12px' : '0px', // Modal-like rounded corners
-            padding: isFullscreen ? '20px' : '0px',
-            boxShadow: isFullscreen ? '0 20px 25px -5px rgba(0,0,0,0.1)' : 'none'
-          }} 
-        />
+        <div ref={chartRef} />
       </div>
     );
   }
