@@ -1,19 +1,19 @@
-import { jsx as O } from "react/jsx-runtime";
-import { forwardRef as V, useRef as d, useState as R, useEffect as j, useMemo as X, useImperativeHandle as B } from "react";
-import T from "apexcharts";
-const C = (a) => {
-  if (!a || a.length === 0)
+import { jsx as R } from "react/jsx-runtime";
+import { forwardRef as V, useRef as y, useState as j, useEffect as C, useMemo as B, useImperativeHandle as E } from "react";
+import I from "apexcharts";
+const H = (s) => {
+  if (!s || s.length === 0)
     return "bar";
-  const e = a[0];
+  const e = s[0];
   if (typeof e == "number")
     return "donut";
   if (typeof e != "object")
     return "bar";
-  const n = Object.values(e).filter(
-    (l) => typeof l == "number"
+  const t = Object.values(e).filter(
+    (a) => typeof a == "number"
   );
-  return e.stage && e.value ? "funnel" : e.label && e.value ? "donut" : e.category && e.value ? "polararea" : e.x !== void 0 && e.y !== void 0 && e.value !== void 0 ? "heatmap" : e.name && e.value && Array.isArray(e.children) ? "treemap" : Array.isArray(e.y) && e.y.length === 4 ? "candlestick" : Array.isArray(e.y) && e.y.length === 5 ? "boxplot" : Array.isArray(e.y) && e.y.length === 2 ? "rangebar" : e.x !== void 0 && e.y !== void 0 && e.r !== void 0 ? "bubble" : typeof e.x == "number" && typeof e.y == "number" ? "scatter" : e.x && !isNaN(Date.parse(e.x)) ? "line" : e.start !== void 0 && e.end !== void 0 ? "slope" : n.length > 1 ? "mixed" : (e.x !== void 0 && e.y !== void 0, "bar");
-}, q = {
+  return e.stage && e.value ? "funnel" : e.label && e.value ? "donut" : e.category && e.value ? "polararea" : e.x !== void 0 && e.y !== void 0 && e.value !== void 0 ? "heatmap" : e.name && e.value && Array.isArray(e.children) ? "treemap" : Array.isArray(e.y) && e.y.length === 4 ? "candlestick" : Array.isArray(e.y) && e.y.length === 5 ? "boxplot" : Array.isArray(e.y) && e.y.length === 2 ? "rangebar" : e.x !== void 0 && e.y !== void 0 && e.r !== void 0 ? "bubble" : typeof e.x == "number" && typeof e.y == "number" ? "scatter" : e.x && !isNaN(Date.parse(e.x)) ? "line" : e.start !== void 0 && e.end !== void 0 ? "slope" : t.length > 1 ? "mixed" : (e.x !== void 0 && e.y !== void 0, "bar");
+}, M = {
   line: "xy",
   area: "xy",
   scatter: "xy",
@@ -28,33 +28,33 @@ const C = (a) => {
   treemap: "heatmap",
   rangebar: "range",
   candlestick: "range"
-}, H = (a, e) => {
-  const n = q[a] || "xy";
-  let l = [], s = [], h = [];
+}, T = (s, e) => {
+  const t = M[s] || "xy";
+  let a = [], l = [], b = [];
   if (!e || e.length === 0)
-    return { series: l, labels: s, categories: h };
-  const g = e[0], i = Object.keys(g).filter(
-    (r) => typeof g[r] == "number"
-  ), c = Object.keys(g).find(
-    (r) => typeof g[r] == "string"
+    return { series: a, labels: l, categories: b };
+  const c = e[0], u = Object.keys(c).filter(
+    (r) => typeof c[r] == "number"
+  ), i = Object.keys(c).find(
+    (r) => typeof c[r] == "string"
   );
-  switch (n) {
+  switch (t) {
     case "circular":
-      l = e.map((r) => r.value ?? r.y ?? r), s = e.map(
+      a = e.map((r) => r.value ?? r.y ?? r), l = e.map(
         (r) => r.label ?? r.category ?? r.name ?? r.x
       );
       break;
     case "category":
-      h = e.map((r) => r.x ?? r.category ?? r.stage ?? r[c]), i.length > 1 ? l = i.map((r) => ({
+      b = e.map((r) => r.x ?? r.category ?? r.stage ?? r[i]), u.length > 1 ? a = u.map((r) => ({
         name: r,
-        data: e.map((b) => b[r])
-      })) : l = [{
-        name: i[0] || "Series 1",
+        data: e.map((o) => o[r])
+      })) : a = [{
+        name: u[0] || "Series 1",
         data: e.map((r) => r.y ?? r.value)
       }];
       break;
     case "heatmap":
-      l = [{
+      a = [{
         name: "Series 1",
         data: e.map((r) => ({
           x: r.x,
@@ -63,23 +63,23 @@ const C = (a) => {
       }];
       break;
     case "range":
-      l = [{ name: "Series 1", data: e }];
+      a = [{ name: "Series 1", data: e }];
       break;
     default:
-      a === "bubble" ? l = [{
+      s === "bubble" ? a = [{
         name: "Series 1",
         data: e.map((r) => ({
           x: r.x,
           y: r.y,
           r: r.r
         }))
-      }] : i.length > 1 ? l = i.map((r) => ({
+      }] : u.length > 1 ? a = u.map((r) => ({
         name: r,
-        data: e.map((b) => ({
-          x: b.x ?? b[c],
-          y: b[r]
+        data: e.map((o) => ({
+          x: o.x ?? o[i],
+          y: o[r]
         }))
-      })) : l = [{
+      })) : a = [{
         name: "Series 1",
         data: e.map((r) => ({
           x: r.x,
@@ -87,148 +87,129 @@ const C = (a) => {
         }))
       }];
   }
-  return { series: l, labels: s, categories: h };
-}, W = V(
-  ({ data: a, type: e, options: n = {}, height: l = 350, title: s }, h) => {
-    const g = d(null), i = d(null), c = d(null), [r, b] = R(!1);
-    j(() => {
-      const t = () => b(!!document.fullscreenElement);
-      return document.addEventListener("fullscreenchange", t), () => document.removeEventListener("fullscreenchange", t);
+  return { series: a, labels: l, categories: b };
+}, X = V(
+  ({ data: s, type: e, options: t = {}, height: a = 350, title: l }, b) => {
+    const c = y(null), u = y(null), i = y(null), [r, o] = j(!1);
+    C(() => {
+      const n = () => o(!!document.fullscreenElement);
+      return document.addEventListener("fullscreenchange", n), () => document.removeEventListener("fullscreenchange", n);
     }, []);
-    const u = X(() => e || (Array.isArray(a[0]) ? a.map((t) => C(t)) : C(a)), [a, e]), p = X(() => {
-      var A, w, z, S, F, k, E;
-      const t = Array.isArray(u) ? String(u[0]).toLowerCase() : String(u).toLowerCase();
-      let y = [], o = [], f = [];
-      if (Array.isArray(a[0]))
-        y = a.map((I, x) => {
-          const L = Array.isArray(e) && e[x] || (Array.isArray(u) ? u[x] : u), M = H(L, I);
-          return {
-            name: `Series ${x + 1}`,
-            type: L,
-            ...M.series[0]
-          };
-        });
-      else {
-        const v = H(u, a);
-        y = v.series, o = v.labels, f = v.categories;
-      }
-      const m = {
-        ...n,
+    const m = B(() => {
+      var h, p, d, x, v, w, z, A, k, O, S, F;
+      const n = Array.isArray(e) ? e[0] : e || H(Array.isArray(s[0]) ? s[0] : s), f = String(n).toLowerCase(), g = T(f, s);
+      return {
+        ...t,
         chart: {
-          type: t === "funnel" || t === "column" ? "bar" : t,
+          // Essential: Mapping 'column' and 'funnel' to 'bar' engine
+          type: f === "funnel" || f === "column" ? "bar" : f,
           height: "100%",
+          id: ((h = t.chart) == null ? void 0 : h.id) || `viz-${Math.random().toString(36).substr(2, 5)}`,
           toolbar: {
             show: !0,
             tools: {
               download: !0,
-              selection: !0,
-              zoom: !0,
-              zoomin: !0,
-              zoomout: !0,
-              pan: !0,
-              reset: !0,
               customIcons: [
                 {
-                  icon: r ? '<svg fill="#9ca3af" viewBox="0 0 24 24" width="18" height="18"><path d="M4 14h6v6H8v-4H4v-2zm10 0h6v2h-4v4h-2v-6zM4 4h2v4h4v2H4V4zm10 0h2v4h4v2h-6V4z"/></svg>' : '<svg fill="#9ca3af" viewBox="0 0 1000 1000" width="18" height="18"><path d="M702 82c-35-18-77 3-77 43v80l-160 160c-18 18-18 47 0 65s47 18 65 0l160-160h80c40 0 61-42 43-77L702 82zM298 918c35 18 77-3 77-43v-80l160-160c18-18 18-47 0-65s-47-18-65 0l-160 160h-80c-40 0-61 42-43 77l111 111z"/></svg>',
+                  // This is the SVG path for BsArrowsAngleExpand
+                  icon: '<svg stroke="currentColor" fill="#9ca3af" stroke-width="0" viewBox="0 0 16 16" height="18" width="18" xmlns="http://www.w3.org/2000/svg"><path d="M5.828 10.172L3 13V10H2v4h4v-1H3l2.828-2.828-1.414-1.414zm4.344 0l1.414 1.414L13 10.172V13h1V9h-4v1h3l-2.828 1.172zM5.828 5.828L3 3v3H2V2h4v1H3l2.828 2.828-1.414-1.414zm4.344 0l1.414-1.414L13 5.828V3h1v4h-4V6h3l-2.828-2.828z"></path></svg>',
                   index: 6,
-                  title: "Full View",
-                  class: "custom-fullscreen-icon",
+                  title: "Toggle Fullscreen",
                   click: () => {
-                    i.current && (document.fullscreenElement ? document.exitFullscreen() : i.current.requestFullscreen());
+                    var L;
+                    document.fullscreenElement ? document.exitFullscreen() : (L = u.current) == null || L.requestFullscreen();
                   }
                 }
               ]
-            },
-            autoSelected: "zoom"
+            }
           },
-          animations: { enabled: !0 },
-          ...n.chart
+          ...t.chart
         },
-        title: {
-          text: typeof s == "string" ? s : (s == null ? void 0 : s.text) || ((A = n.title) == null ? void 0 : A.text) || void 0,
-          align: (typeof s == "object" ? s == null ? void 0 : s.align : (w = n.title) == null ? void 0 : w.align) || "left",
-          margin: ((z = n.title) == null ? void 0 : z.margin) || 10,
-          style: {
-            fontSize: "14px",
-            fontWeight: "bold",
-            fontFamily: "Helvetica, Arial, sans-serif",
-            color: "#263238",
-            ...(S = n.title) == null ? void 0 : S.style
+        series: g.series,
+        labels: g.labels || t.labels,
+        // Required for PolarArea/RadialBar
+        xaxis: {
+          categories: g.categories,
+          ...t.xaxis
+        },
+        dataLabels: { enabled: ((p = t.dataLabels) == null ? void 0 : p.enabled) ?? !1 },
+        plotOptions: {
+          ...t.plotOptions,
+          bar: {
+            horizontal: f === "funnel" || f === "rangebar",
+            isFunnel: f === "funnel",
+            ...(d = t.plotOptions) == null ? void 0 : d.bar
+          },
+          bubble: {
+            minBubbleRadius: ((v = (x = t.plotOptions) == null ? void 0 : x.bubble) == null ? void 0 : v.minBubbleRadius) ?? 5,
+            maxBubbleRadius: ((z = (w = t.plotOptions) == null ? void 0 : w.bubble) == null ? void 0 : z.maxBubbleRadius) ?? 20
+          },
+          // Radar/RadialBar often need explicit sizing to render well
+          radar: { size: ((k = (A = t.plotOptions) == null ? void 0 : A.radar) == null ? void 0 : k.size) ?? 140 },
+          radialBar: {
+            hollow: { size: "70%" },
+            ...(O = t.plotOptions) == null ? void 0 : O.radialBar
           }
         },
-        colors: n.colors || [
-          "rgba(0, 143, 251, 0.85)",
-          "#FEB019",
-          "hsl(145, 63%, 42%)",
-          "green"
-        ],
-        fill: {
-          type: ((F = n.fill) == null ? void 0 : F.type) || "solid",
-          ...n.fill
-        },
-        series: y,
-        dataLabels: {
-          enabled: ((k = n.dataLabels) == null ? void 0 : k.enabled) ?? !1,
-          ...n.dataLabels
-        },
-        tooltip: {
-          enabled: !0,
-          theme: "dark",
-          ...n.tooltip
-        },
-        grid: {
-          show: !0,
-          ...n.grid
+        title: {
+          text: typeof l == "string" ? l : (l == null ? void 0 : l.text) || ((S = t.title) == null ? void 0 : S.text),
+          align: (typeof l == "object" ? l == null ? void 0 : l.align : (F = t.title) == null ? void 0 : F.align) || "left",
+          ...t.title
         }
       };
-      return o != null && o.length && (m.labels = o), f != null && f.length && (m.xaxis = { ...n.xaxis, categories: f }), (t === "bar" || t === "column") && (m.plotOptions = {
-        ...n.plotOptions,
-        bar: {
-          ...((E = n.plotOptions) == null ? void 0 : E.bar) || {},
-          horizontal: !1
-        }
-      }), m;
-    }, [a, u, n, l, s]);
-    return B(h, () => ({
-      zoomIn() {
-        var m;
-        const t = c.current;
-        if (!((m = t == null ? void 0 : t.w) != null && m.globals))
-          return;
-        const { minX: y, maxX: o } = t.w.globals, f = (o - y) * 0.1;
-        t.zoomX(y + f, o - f);
+    }, [s, e, t, l, r]);
+    return C(() => {
+      c.current && (i.current ? i.current.updateOptions(m) : (i.current = new I(c.current, m), i.current.render()));
+    }, [m]), E(b, () => ({
+      zoomIn: () => {
+        var n;
+        return (n = i.current) == null ? void 0 : n.zoomX(void 0, void 0);
       },
-      zoomOut() {
-        var m;
-        const t = c.current;
-        if (!((m = t == null ? void 0 : t.w) != null && m.globals))
-          return;
-        const { minX: y, maxX: o } = t.w.globals, f = (o - y) * 0.1;
-        t.zoomX(y - f, o + f);
+      zoomOut: () => {
+        var n;
+        return (n = i.current) == null ? void 0 : n.zoomX(void 0, void 0);
       },
-      reset() {
-        var t;
-        (t = c.current) == null || t.resetSeries();
+      reset: () => {
+        var n;
+        return (n = i.current) == null ? void 0 : n.resetSeries();
       },
-      toggleFullscreen() {
-        i.current && (document.fullscreenElement ? document.exitFullscreen() : i.current.requestFullscreen());
+      toggleFullscreen: () => {
+        var n;
+        document.fullscreenElement ? document.exitFullscreen() : (n = u.current) == null || n.requestFullscreen();
       }
-    })), j(() => {
-      if (g.current)
-        return c.current ? c.current.updateOptions(p, !0, !0) : (c.current = new T(g.current, p), c.current.render()), () => {
-          var t;
-          (t = c.current) == null || t.destroy(), c.current = null;
-        };
-    }, [p]), /* @__PURE__ */ O(
+    })), /* @__PURE__ */ R(
       "div",
       {
-        ref: i,
-        style: { height: l, width: "100%", background: "#fff" },
-        children: /* @__PURE__ */ O("div", { ref: g })
+        ref: u,
+        style: {
+          height: a,
+          width: "100%",
+          backgroundColor: r ? "rgba(0,0,0,0.5)" : "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transition: "background 0.3s ease"
+        },
+        children: /* @__PURE__ */ R(
+          "div",
+          {
+            ref: c,
+            style: {
+              width: r ? "70%" : "100%",
+              // Makes it "Smaller and in Center"
+              height: r ? "70%" : "100%",
+              backgroundColor: "#fff",
+              borderRadius: r ? "12px" : "0px",
+              // Modal-like rounded corners
+              padding: r ? "20px" : "0px",
+              boxShadow: r ? "0 20px 25px -5px rgba(0,0,0,0.1)" : "none"
+            }
+          }
+        )
       }
     );
   }
 );
 export {
-  W as VizlyChart
+  X as VizlyChart
 };
