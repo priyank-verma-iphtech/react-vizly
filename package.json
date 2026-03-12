@@ -23,7 +23,7 @@
   },
   "peerDependencies": {
     "react": ">=16.8.0",
-    "react-dom": "^19.2.4"
+    "react-dom": "^18.0.0"
   },
   "dependencies": {
     "apexcharts": "^4.0.0",
