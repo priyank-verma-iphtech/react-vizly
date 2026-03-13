@@ -17,7 +17,7 @@ export const chartEngine: Record<string, string> = {
   polararea: "circular",
 
   heatmap: "heatmap",
-  treemap: "heatmap",
+  treemap: "treemap",
 
   rangebar: "range",
   candlestick: "range",
