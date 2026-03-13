@@ -12,10 +12,11 @@ export declare interface VizlyProps {
         align?: 'left' | 'center' | 'right';
         style?: any;
     };
-    colors?: string[];
 }
 
 export declare interface VizlyRef {
+    zoomIn: () => void;
+    zoomOut: () => void;
     reset: () => void;
     toggleFullscreen: () => void;
 }
