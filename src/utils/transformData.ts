@@ -1,6 +1,7 @@
 import { chartEngine } from "./chartEngine";
 
 export const transformData = (type: string, data: any[]) => {
+
   const engine = chartEngine[type] || "xy";
 
   let series: any = [];
@@ -21,80 +22,94 @@ export const transformData = (type: string, data: any[]) => {
     Object.keys(first).find((k) => typeof first[k] === "string") || "x";
 
   switch (engine) {
+
     /* -----------------------------
-       CIRCULAR (pie / donut / radialBar)
+       PIE / DONUT / POLAR / RADIAL
     ------------------------------ */
 
     case "circular":
+
       series = data.map((d) => Number(d.value ?? d.y ?? 0));
 
-      labels = data.map((d) =>
-        String(d.label ?? d.category ?? d.name ?? "Unknown")
+      labels = data.map(
+        (d) => String(d.label ?? d.category ?? d.name ?? d.x ?? "Unknown")
       );
 
       break;
 
     /* -----------------------------
-       CATEGORY (bar / column / radar / funnel)
+       CATEGORY
+       bar / column / radar / funnel
     ------------------------------ */
 
     case "category":
-      const cats = data.map((d) =>
+
+      categories = data.map((d) =>
         String(d.x ?? d.category ?? d.stage ?? d[categoryKey] ?? "Unknown")
       );
 
-      if (type === "radar") {
-        labels = cats;
-      } else {
-        categories = cats;
-      }
-
       if (numericKeys.length > 1) {
+
         series = numericKeys.map((key) => ({
           name: key,
-          data: data.map((d) => d[key] ?? 0),
+          data: data.map((d) => d[key] ?? 0)
         }));
+
       } else {
-        series = [
-          {
-            name: numericKeys[0] || "Series 1",
-            data: data.map((d) => d.y ?? d.value ?? 0),
-          },
-        ];
+
+        series = [{
+          name: numericKeys[0] || "Series 1",
+          data: data.map((d) => d.y ?? d.value ?? 0)
+        }];
+
       }
 
       break;
 
     /* -----------------------------
-       RANGE (candlestick / boxplot / rangebar)
+       RANGE
+       boxplot / rangebar / candlestick
     ------------------------------ */
 
     case "range":
-      series = [
-        {
-          name: "Series 1",
-          data: data.map((d) => {
-            let yVal: number[] = [];
 
-            if (type === "boxplot") {
-              yVal = Array.isArray(d.y)
-                ? d.y
-                : [d.min, d.q1, d.median, d.q3, d.max];
-            } else if (type === "candlestick") {
-              yVal = Array.isArray(d.y)
-                ? d.y
-                : [d.open, d.high, d.low, d.close];
-            } else {
-              yVal = Array.isArray(d.y) ? d.y : [d.start, d.end];
-            }
+      series = [{
+        name: "Series 1",
+        data: data.map((d) => {
 
-            return {
-              x: d.x ?? d.label ?? d.category ?? d.date ?? "Unknown",
-              y: yVal,
-            };
-          }),
-        },
-      ];
+          let yVal: number[] = [];
+
+          if (type === "boxplot") {
+
+            yVal = Array.isArray(d.y)
+              ? d.y
+              : [d.min, d.q1, d.median, d.q3, d.max];
+
+          }
+
+          else if (type === "candlestick") {
+
+            yVal = Array.isArray(d.y)
+              ? d.y
+              : [d.open, d.high, d.low, d.close];
+
+          }
+
+          else {
+
+            yVal = Array.isArray(d.y)
+              ? d.y
+              : [d.start, d.end];
+
+          }
+
+          return {
+            x: d.x ?? d.label ?? d.category ?? d.date ?? "Unknown",
+            y: yVal
+          };
+
+        })
+      }];
 
       break;
 
@@ -103,22 +118,25 @@ export const transformData = (type: string, data: any[]) => {
     ------------------------------ */
 
     case "heatmap":
+
       const groups: Record<string, any[]> = {};
 
       data.forEach((d) => {
-        const key = d.group || "Series 1";
+
+        const key = d.group ?? "Series 1";
 
         if (!groups[key]) groups[key] = [];
 
         groups[key].push({
-          x: String(d.x ?? "Unknown"),
-          y: d.value ?? d.y ?? 0,
+          x: String(d.x ?? d.category ?? "Unknown"),
+          y: d.value ?? d.y ?? 0
         });
+
       });
 
       series = Object.keys(groups).map((k) => ({
         name: k,
-        data: groups[k],
+        data: groups[k]
       }));
 
       break;
@@ -128,54 +146,60 @@ export const transformData = (type: string, data: any[]) => {
     ------------------------------ */
 
     case "treemap":
-      series = [
-        {
-          data: data.map((d) => ({
-            x: d.name,
-            y: d.value,
-          })),
-        },
-      ];
+
+      series = [{
+        data: data.map((d) => ({
+          x: d.name ?? d.label ?? d.category,
+          y: d.value ?? d.y ?? 0
+        }))
+      }];
 
       break;
 
     /* -----------------------------
        XY charts
+       line / scatter / bubble
     ------------------------------ */
 
     default:
+
       if (type === "bubble") {
-        series = [
-          {
-            name: "Series 1",
-            data: data.map((d) => ({
-              x: d.x ?? 0,
-              y: d.y ?? 0,
-              z: d.r ?? d.z ?? d.value ?? 0,
-            })),
-          },
-        ];
-      } else if (numericKeys.length > 1) {
+
+        series = [{
+          name: "Series 1",
+          data: data.map((d) => ({
+            x: d.x ?? 0,
+            y: d.y ?? 0,
+            z: d.r ?? d.z ?? d.value ?? 0
+          }))
+        }];
+
+      }
+
+      else if (numericKeys.length > 1) {
+
         series = numericKeys.map((key) => ({
           name: key,
           data: data.map((d) => ({
             x: d.x ?? d[categoryKey],
-            y: d[key] ?? 0,
-          })),
+            y: d[key] ?? 0
+          }))
         }));
-      } else {
-        series = [
-          {
-            name: "Series 1",
-            data: data.map((d) => ({
-              x: d.x ?? d[categoryKey],
-              y: d.y ?? d.value ?? 0,
-            })),
-          },
-        ];
+
       }
 
-      break;
+      else {
+
+        series = [{
+          name: "Series 1",
+          data: data.map((d) => ({
+            x: d.x ?? d[categoryKey],
+            y: d.y ?? d.value ?? 0
+          }))
+        }];
+
+      }
+
   }
 
   return { series, labels, categories };

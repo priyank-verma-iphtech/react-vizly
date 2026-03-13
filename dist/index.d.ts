@@ -10,7 +10,7 @@ export declare interface VizlyProps {
     colors?: string[];
     title?: string | {
         text: string;
-        align?: 'left' | 'center' | 'right';
+        align?: "left" | "center" | "right";
         style?: any;
     };
 }
