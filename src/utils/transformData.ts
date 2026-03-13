@@ -1,83 +1,179 @@
-import { chartEngine } from "./chartEngine";
+import { chartEngine } from "./chartEngine"
 
 export const transformData = (type: string, data: any[]) => {
-  const engine = chartEngine[type] || "xy";
-  let series: any = [];
-  let labels: string[] = [];
-  let categories: string[] = [];
 
-  if (!data || !Array.isArray(data) || data.length === 0) {
-    return { series: [], labels: [], categories: [] };
-  }
+ const engine = chartEngine[type] || "xy"
 
-  const first = data[0];
-  const numericKeys = Object.keys(first).filter(k => typeof first[k] === "number");
-  const categoryKey = Object.keys(first).find(k => typeof first[k] === "string") || "x";
+ let series: any[] = []
+ let labels: string[] = []
+ let categories: string[] = []
 
-  switch (engine) {
-    case "circular":
-      series = data.map((d) => Number(d.value ?? d.y ?? d[numericKeys[0]] ?? 0));
-      labels = data.map((d) => String(d.label ?? d.category ?? d.name ?? d.x ?? "Unknown"));
-      break;
+ if (!data || data.length === 0)
+   return { series, labels, categories }
 
-    case "category":
-      // 1. Extract the labels for the X-axis
-      categories = data.map((d) => String(d.x ?? d.category ?? d.stage ?? d[categoryKey] ?? "Unknown"));
-      
-      // 2. Map data to simple number arrays so they align with categories
-      if (numericKeys.length > 0) {
-        series = numericKeys.map((key) => ({
-          name: key,
-          data: data.map((d) => d[key] ?? 0)
-        }));
-      } else {
-        series = [{
-          name: "Series 1",
-          data: data.map((d) => d.y ?? d.value ?? 0)
-        }];
-      }
-      break;
+ const first = data[0]
 
-    case "range":
-      series = [{
-        name: "Series 1",
-        data: data.map((d) => {
-          let yVal: number[] = [];
-          if (type === "boxplot") yVal = Array.isArray(d.y) ? d.y : [d.min, d.q1, d.median, d.q3, d.max];
-          else if (type === "candlestick") yVal = Array.isArray(d.y) ? d.y : [d.open, d.high, d.low, d.close];
-          else yVal = Array.isArray(d.y) ? d.y : [d.start, d.end];
-          
-          return { x: d.x ?? d.label ?? d.category ?? d.date ?? "Unknown", y: yVal };
-        })
-      }];
-      break;
+ const numericKeys = Object.keys(first).filter(
+   k => typeof first[k] === "number"
+ )
 
-    case "heatmap":
-      const groups: Record<string, any[]> = {};
-      data.forEach((d) => {
-        const key = d.group ?? "Series 1";
-        if (!groups[key]) groups[key] = [];
-        groups[key].push({ x: String(d.x ?? d.category ?? "Unknown"), y: d.value ?? d.y ?? 0 });
-      });
-      series = Object.keys(groups).map((k) => ({ name: k, data: groups[k] }));
-      break;
+ const categoryKey =
+   Object.keys(first).find(k => typeof first[k] === "string") || "x"
 
-    default: // XY Charts (Line, Area, Scatter, Bubble)
-      if (type === "bubble") {
-        series = [{
-          name: "Series 1",
-          data: data.map((d) => ({ x: d.x ?? 0, y: d.y ?? 0, z: d.r ?? d.z ?? d.value ?? 0 }))
-        }];
-      } else {
-        series = numericKeys.map((key) => ({
-          name: key,
-          data: data.map((d) => ({ x: d.x ?? d[categoryKey], y: d[key] ?? 0 }))
-        }));
-      }
-  }
+ switch (engine) {
 
-  return { series, labels, categories };
-};
+   /* CIRCULAR CHARTS */
+
+   case "circular":
+
+     series = data.map(d => d.value ?? d.y ?? d)
+
+     labels = data.map(
+       d => d.label ?? d.category ?? d.name ?? d.x
+     )
+
+     break
+
+   /* CATEGORY CHARTS */
+
+   case "category":
+
+     categories = data.map(
+       d => d.x ?? d.category ?? d.stage ?? d[categoryKey]
+     )
+
+     if (numericKeys.length > 1) {
+
+       series = numericKeys.map(key => ({
+         name: key,
+         data: data.map(d => d[key])
+       }))
+
+     } else {
+
+       series = [{
+         name: numericKeys[0] || "Series 1",
+         data: data.map(d => d.y ?? d.value)
+       }]
+
+     }
+
+     break
+
+   /* RANGE CHARTS */
+
+   case "range":
+
+     series = [{
+       name: "Series 1",
+       data: data.map(d => {
+
+         let yVal: number[] = []
+
+         if (type === "boxplot")
+           yVal = d.y ?? [d.min, d.q1, d.median, d.q3, d.max]
+
+         else if (type === "candlestick")
+           yVal = d.y ?? [d.open, d.high, d.low, d.close]
+
+         else
+           yVal = d.y ?? [d.start, d.end]
+
+         return {
+           x: d.x ?? d.label ?? d.category ?? d.date,
+           y: yVal
+         }
+
+       })
+     }]
+
+     break
+
+   /* HEATMAP */
+
+   case "heatmap":
+
+     const groups: Record<string, any[]> = {}
+
+     data.forEach(d => {
+
+       const key = d.group ?? "Series 1"
+
+       if (!groups[key]) groups[key] = []
+
+       groups[key].push({
+         x: d.x ?? d.category,
+         y: d.value ?? d.y
+       })
+
+     })
+
+     series = Object.keys(groups).map(k => ({
+       name: k,
+       data: groups[k]
+     }))
+
+     break
+
+   /* TREEMAP */
+
+   case "treemap":
+
+     series = [{
+       data: data.map(d => ({
+         x: d.name,
+         y: d.value
+       }))
+     }]
+
+     break
+
+   /* XY CHARTS */
+
+   default:
+
+     if (type === "bubble") {
+
+       series = [{
+         name: "Series 1",
+         data: data.map(d => ({
+           x: d.x,
+           y: d.y,
+           z: d.r ?? d.z
+         }))
+       }]
+
+     }
+
+     else if (numericKeys.length > 1) {
+
+       series = numericKeys.map(key => ({
+         name: key,
+         data: data.map(d => ({
+           x: d.x ?? d[categoryKey],
+           y: d[key]
+         }))
+       }))
+
+     }
+
+     else {
+
+       series = [{
+         name: "Series 1",
+         data: data.map(d => ({
+           x: d.x,
+           y: d.y
+         }))
+       }]
+
+     }
+
+ }
+
+ return { series, labels, categories }
+
+}
 
 // import { chartEngine } from "./chartEngine";
 

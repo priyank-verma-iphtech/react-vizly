@@ -1,68 +1,49 @@
-import { transformData } from "./transformData";
-import { detectChartType } from "./detectChartType";
+import { transformData } from "./transformData"
+import { detectChartType } from "./detectChartType"
 
 export const processChartData = (
-  type: string | string[] | undefined,
-  data: any[] | any[][]
+ type: string | string[] | undefined,
+ data: any[] | any[][]
 ) => {
-  if (!data || data.length === 0) return [];
 
-  /* MULTIPLE DATASETS */
+ if (!data || data.length === 0) return []
 
-  if (Array.isArray(data[0])) {
-    const datasets = data as any[][];
+ if (Array.isArray(data[0])) {
 
-    return datasets.flatMap((dataset, i) => {
-      const chartType = Array.isArray(type)
-        ? type[i]
-        : detectChartType(dataset);
+   const datasets = data as any[][]
 
-      const transformed = transformData(chartType, dataset);
+   return datasets.map((dataset, i) => {
 
-      return transformed.series.map((s: any) => ({
-        type: chartType,
-        series: [s],
-        labels: transformed.labels,
-        categories: transformed.categories,
-      }));
-    });
-  }
+     const chartType = Array.isArray(type)
+       ? type[i]
+       : detectChartType(dataset)
 
-  /* SINGLE DATASET */
+     const transformed = transformData(chartType, dataset)
 
-  const dataset = data as any[];
+     return {
+       type: chartType,
+       ...transformed
+     }
 
-  /* MIXED CHART */
+   })
 
-  if (Array.isArray(type)) {
-    const transformed = transformData(type[0], dataset);
+ }
 
-    const series = transformed.series.map((s: any, i: number) => ({
-      ...s,
-      type: type[i] || type[0],
-    }));
+ const dataset = data as any[]
 
-    return [
-      {
-        type: "mixed",
-        series,
-        labels: transformed.labels,
-        categories: transformed.categories,
-      },
-    ];
-  }
+ const chartType =
+   typeof type === "string"
+     ? type
+     : detectChartType(dataset)
 
-  const chartType = typeof type === "string" ? type : detectChartType(dataset);
+ const transformed = transformData(chartType, dataset)
 
-  const transformed = transformData(chartType, dataset);
+ return [{
+   type: chartType,
+   ...transformed
+ }]
 
-  return [
-    {
-      type: chartType,
-      ...transformed,
-    },
-  ];
-};
+}
 
 // import { transformData } from "./transformData"
 // import { detectChartType } from "./detectChartType"

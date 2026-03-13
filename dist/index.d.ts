@@ -9,7 +9,7 @@ export declare interface VizlyProps {
     height?: number | string;
     title?: string | {
         text: string;
-        align?: 'left' | 'center' | 'right';
+        align?: "left" | "center" | "right";
         style?: any;
     };
 }

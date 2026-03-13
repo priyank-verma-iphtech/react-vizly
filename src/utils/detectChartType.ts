@@ -1,63 +1,49 @@
 export const detectChartType = (data: any[]): string => {
-  if (!data || data.length === 0) return "bar";
 
-  const first = data[0];
-
-  if (typeof first === "number") return "donut";
-
-  if (typeof first !== "object") return "bar";
-
-  const numericValues = Object.values(first).filter(
-    (v) => typeof v === "number"
-  );
-
-  /* FUNNEL */
-  if (first.stage && first.value) return "funnel";
-
-  /* PIE / DONUT */
-  if (first.label && first.value) return "donut";
-
-  /* POLAR AREA */
-  if (first.category && first.value) return "polararea";
-
-  /* TREEMAP */
-  if (first.name && first.value) return "treemap";
-
-  /* HEATMAP */
+  if (!data || data.length === 0) return "bar"
+ 
+  const first = data[0]
+ 
+  if (typeof first === "number") return "donut"
+ 
+  if (first.stage && first.value) return "funnel"
+ 
+  if (first.label && first.value) return "donut"
+ 
+  if (first.category && first.value) return "polararea"
+ 
+  if (first.name && first.value) return "treemap"
+ 
   if (first.x !== undefined && first.y !== undefined && first.value !== undefined)
-    return "heatmap";
-
-  /* CANDLESTICK */
-  if (Array.isArray(first.y) && first.y.length === 4) return "candlestick";
-
-  /* BOXPLOT */
-  if (Array.isArray(first.y) && first.y.length === 5) return "boxplot";
-
-  /* RANGE BAR */
-  if (Array.isArray(first.y) && first.y.length === 2) return "rangebar";
-
-  /* BUBBLE */
+    return "heatmap"
+ 
+  if (Array.isArray(first.y) && first.y.length === 4)
+    return "candlestick"
+ 
+  if (Array.isArray(first.y) && first.y.length === 5)
+    return "boxplot"
+ 
+  if (Array.isArray(first.y) && first.y.length === 2)
+    return "rangebar"
+ 
   if (first.x !== undefined && first.y !== undefined && first.r !== undefined)
-    return "bubble";
-
-  /* SCATTER */
+    return "bubble"
+ 
   if (typeof first.x === "number" && typeof first.y === "number")
-    return "scatter";
-
-  /* DATE LINE */
-  if (first.x && !isNaN(Date.parse(first.x))) return "line";
-
-  /* SLOPE */
-  if (first.start !== undefined && first.end !== undefined) return "slope";
-
-  /* MULTI SERIES */
-  if (numericValues.length > 1 && !first.category) return "mixed";
-
-  /* CATEGORY BAR */
-  if (first.x !== undefined && first.y !== undefined) return "bar";
-
-  return "bar";
-};
+    return "scatter"
+ 
+  if (first.x && !isNaN(Date.parse(first.x)))
+    return "line"
+ 
+  if (first.start !== undefined && first.end !== undefined)
+    return "rangebar"
+ 
+  if (first.x !== undefined && first.y !== undefined)
+    return "bar"
+ 
+  return "bar"
+ 
+ }
 
 // export const detectChartType = (data: any[]) => {
 
