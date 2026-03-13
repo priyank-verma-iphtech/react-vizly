@@ -53,87 +53,87 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     }, [data, type]);
 
     // 2. Logic to generate configuration for either Main or Modal chart
-    const getChartConfig = (isModal: boolean) => {
-      const t = Array.isArray(finalType)
-        ? String(finalType[0]).toLowerCase()
-        : String(finalType).toLowerCase();
+    // ... (keep imports and interfaces same)
 
-      let series: any = [];
-      let labels: any = [];
-      let categories: any = [];
+const getChartConfig = (isModal: boolean) => {
+  const rawType = Array.isArray(finalType) ? String(finalType[0]) : String(finalType);
+  const t = rawType.toLowerCase();
 
-      if (Array.isArray(data[0])) {
-        const datasets = data as any[][];
-        series = datasets.map((d, i) => {
-          const chartType = Array.isArray(type)
-            ? type[i] || (Array.isArray(finalType) ? finalType[i] : finalType)
-            : Array.isArray(finalType) ? finalType[i] : finalType;
+  let series: any = [];
+  let labels: any = [];
+  let categories: any = [];
 
-          const transformed = transformData(chartType as string, d);
-          return {
-            name: `Series ${i + 1}`,
-            type: chartType,
-            ...transformed.series[0],
-          };
-        });
-      } else {
-        const transformed = transformData(finalType as string, data as any[]);
-        series = transformed.series;
-        labels = transformed.labels;
-        categories = transformed.categories;
-      }
+  // Data Processing
+  if (Array.isArray(data[0])) {
+    const datasets = data as any[][];
+    // For multi-dataset, we aggregate them into the series array
+    datasets.forEach((d, i) => {
+      const chartType = Array.isArray(type) ? type[i] : (Array.isArray(finalType) ? finalType[i] : finalType);
+      const transformed = transformData(chartType as string, d);
+      
+      // Merge categories if they don't exist yet
+      if (categories.length === 0) categories = transformed.categories;
+      if (labels.length === 0) labels = transformed.labels;
+      
+      transformed.series.forEach((s: any) => {
+        series.push({ ...s, type: chartType });
+      });
+    });
+  } else {
+    const transformed = transformData(t, data as any[]);
+    series = transformed.series;
+    labels = transformed.labels;
+    categories = transformed.categories;
+  }
 
-      const cfg: any = {
-        ...options,
-        chart: {
-          // CRITICAL: Unique IDs prevent internal event conflicts
-          id: isModal ? "vizly-modal-chart" : "vizly-main-chart",
-          type: t === "funnel" || t === "column" ? "bar" : t,
-          height: "100%",
-          toolbar: {
-            show: true,
-            tools: {
-              download: true,
-              selection: true,
-              zoom: true,
-              zoomin: true,
-              zoomout: true,
-              pan: true,
-              reset: true,
-              customIcons: isModal ? [] : [
-                {
-                  icon: expandIconString,
-                  index: 6,
-                  title: 'Expand',
-                  class: 'custom-icon',
-                  click: () => setIsModalOpen(true)
-                }
-              ],
-            },
-          },
-          animations: { enabled: !isModal }, // Faster rendering in modal
-          ...options.chart,
-        },
-        title: {
-          text: typeof title === 'string' ? title : (title?.text || options.title?.text || undefined),
-          align: (typeof title === 'object' ? title?.align : options.title?.align) || 'left',
-          style: { fontSize: '14px', fontWeight: 'bold', ...options.title?.style },
-        },
-        series,
-        labels: labels?.length ? labels : undefined,
-        xaxis: categories?.length ? { ...options.xaxis, categories } : options.xaxis,
-        plotOptions: {
-          ...options.plotOptions,
-          bar: {
-            horizontal: t === "funnel" || t === "rangebar",
-            isFunnel: t === "funnel",
-            ...options.plotOptions?.bar,
-          },
-        },
-        tooltip: { theme: "dark", ...options.tooltip },
-      };
+  return {
+    ...options,
+    chart: {
+      id: isModal ? "vizly-modal-chart" : "vizly-main-chart",
+      // Funnel and Column are essentially 'bar' types in Apex
+      type: (t === "funnel" || t === "column" || t === "bar") ? "bar" : (t === "radar" ? "radar" : t),
+      height: "100%",
+      toolbar: {
+        show: true,
+        tools: {
+          customIcons: isModal ? [] : [{
+            icon: expandIconString,
+            index: 6,
+            
+            class: 'custom-icon',
+            click: () => setIsModalOpen(true)
+          }],
+        }
+      },
+      animations: { enabled: !isModal },
+      ...options.chart,
+    },
+    series,
+    labels: labels?.length ? labels : undefined,
+    xaxis: {
+      // IMPORTANT: Explicitly set type to category for Bar/Column/Radar
+      type: categories?.length ? 'category' : (options.xaxis?.type || 'numeric'),
+      categories: categories?.length ? categories : undefined,
+      ...options.xaxis
+    },
+    plotOptions: {
+      ...options.plotOptions,
+      bar: {
+        horizontal: t === "funnel" || t === "bar", // Funnel must be horizontal
+        isFunnel: t === "funnel",
+        columnWidth: '70%',
+        ...options.plotOptions?.bar,
+      },
+    },
+    title: {
+      text: typeof title === 'string' ? title : (title?.text || options.title?.text),
+      align: (typeof title === 'object' ? title?.align : options.title?.align) || 'left',
+    },
+    tooltip: { theme: "dark", ...options.tooltip },
+  };
 
-      return cfg;
+
+      
     };
 
     // --- MAIN CHART EFFECT ---
