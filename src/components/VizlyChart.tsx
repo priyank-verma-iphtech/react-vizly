@@ -11,6 +11,7 @@ import { detectChartType } from "../utils/detectChartType";
 import { transformData } from "../utils/transformData";
 import ReactDOMServer from "react-dom/server";
 import { BsArrowsAngleExpand } from "react-icons/bs";
+import { BsArrowsAngleContract } from "react-icons/bs";
 
 export interface VizlyProps {
   data: any[] | any[][];
@@ -36,7 +37,7 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     const modalChartRef = useRef<HTMLDivElement>(null);
     const modalInstance = useRef<ApexCharts | null>(null);
 
-    const iconString = ReactDOMServer.renderToString(
+    const iconString = useMemo(() => ReactDOMServer.renderToString(
   <BsArrowsAngleExpand 
     size={14} 
     style={{ 
@@ -46,7 +47,7 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       marginLeft: '6px'
     }} 
   />
-);
+),[]);
 
     
    
@@ -250,8 +251,8 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
           }}>
             <div style={{
               width: '90%',
-              maxWidth: '600px', // Makes it "not so large"
-              height: '450px',   // Fixed height for the modal
+              maxWidth: '600px', 
+              height: '450px',   
               background: '#fff',
               borderRadius: '12px',
               padding: '40px 20px 20px 20px',
@@ -262,14 +263,14 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
                 onClick={() => setIsModalOpen(false)}
                 style={{
                   position: 'absolute',
-                  top: 10,
-                  right: 14,
+                  top: 12,
+                  right: 15,
                   border: 'none',
                   background: 'transparent',
                   fontSize: '18px',
                   cursor: 'pointer'
                 }}
-              ><BsArrowsAngleExpand size={14}/>
+              ><BsArrowsAngleContract size={16}/>
               </button>
               
               <div ref={modalChartRef} style={{ height: '100%', width: '100%' }} />
