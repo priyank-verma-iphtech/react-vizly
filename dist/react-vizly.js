@@ -3468,7 +3468,7 @@ const oo = Li(
         eo,
         {
           size: 14,
-          style: { color: "#9ca3af", marginTop: "5px", marginLeft: "4px" }
+          style: { color: "#9ca3af", marginTop: "5px", marginLeft: "2px" }
         }
       )
     ), []), V = ln(() => l || (Array.isArray(u[0]) ? u.map((M) => fn(M)) : fn(u)), [u, l]), xe = (M) => {

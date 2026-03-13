@@ -40,7 +40,7 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     const expandIconString = useMemo(() => ReactDOMServer.renderToString(
       <BsArrowsAngleExpand 
         size={14} 
-        style={{ color: '#9ca3af', marginTop: '5px', marginLeft: '4px' }} 
+        style={{ color: '#9ca3af', marginTop: '5px', marginLeft: '2px' }} 
       />
     ), []);
 
