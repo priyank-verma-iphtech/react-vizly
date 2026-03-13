@@ -1,208 +1,153 @@
+
+
 import { chartEngine } from "./chartEngine";
 
 export const transformData = (type: string, data: any[]) => {
   const engine = chartEngine[type] || "xy";
+
   let series: any = [];
   let labels: string[] = [];
   let categories: string[] = [];
 
+  // 1. Safety Guard: If no data, return empty structures immediately
   if (!data || !Array.isArray(data) || data.length === 0) {
-    return { series, labels, categories };
+    return { series: [], labels: [], categories: [] };
   }
 
   const first = data[0];
-  const numericKeys = Object.keys(first).filter(k => typeof first[k] === "number");
-  const categoryKey = Object.keys(first).find(k => typeof first[k] === "string") || "x";
+
+  // Detect keys for mapping
+  const numericKeys = Object.keys(first).filter(
+    (k) => typeof first[k] === "number"
+  );
+
+  const categoryKey = Object.keys(first).find(
+    (k) => typeof first[k] === "string"
+  ) || "x";
 
   switch (engine) {
+    /* ---------------------------------------------------------
+       CIRCULAR (Pie, Donut, RadialBar)
+       Apex expects: series = [44, 55, 13]
+    --------------------------------------------------------- */
     case "circular":
-      series = data.map(d => Number(typeof d === "number" ? d : (d.value ?? d.y ?? 0)));
-      labels = data.map(d => String(d.label ?? d.category ?? d.name ?? d.x ?? "Unknown"));
+      // Map to a flat array of numbers. Fallback to 0 to prevent 'length' errors.
+      series = data.map((d) => {
+        const val = typeof d === "number" ? d : (d.value ?? d.y ?? d.amount ?? 0);
+        return Number(val);
+      });
+
+      labels = data.map(
+        (d) => String(d.label ?? d.category ?? d.name ?? d.x ?? "Unknown")
+      );
       break;
 
+    /* ---------------------------------------------------------
+       CATEGORY (Bar, Column, Radar, Funnel)
+       Apex expects: series = [{ name: 'S1', data: [1, 2, 3] }]
+    --------------------------------------------------------- */
     case "category":
-      categories = data.map(d => String(d.x ?? d.category ?? d.stage ?? d[categoryKey]));
-      series = numericKeys.length > 1 
-        ? numericKeys.map(key => ({ name: key, data: data.map(d => d[key] ?? 0) }))
-        : [{ name: "Series 1", data: data.map(d => d.y ?? d.value ?? 0) }];
+      categories = data.map((d) => 
+        String(d.x ?? d.category ?? d.stage ?? d[categoryKey] ?? "Unknown")
+      );
+
+      if (numericKeys.length > 1) {
+        series = numericKeys.map((key) => ({
+          name: key,
+          data: data.map((d) => d[key] ?? 0),
+        }));
+      } else {
+        series = [{
+          name: numericKeys[0] || "Series 1",
+          data: data.map((d) => d.y ?? d.value ?? d[numericKeys[0]] ?? 0),
+        }];
+      }
       break;
 
+    /* ---------------------------------------------------------
+       RANGE (Boxplot, Candlestick, RangeBar)
+       Apex expects: y = [number, number, ...]
+    --------------------------------------------------------- */
     case "range":
       series = [{
         name: "Series 1",
-        data: data.map(d => {
-          let yVal = Array.isArray(d.y) ? d.y : [];
-          if (yVal.length === 0) {
-            if (type === "boxplot") yVal = [d.min ?? 0, d.q1 ?? 0, d.median ?? 0, d.q3 ?? 0, d.max ?? 0];
-            else if (type === "candlestick") yVal = [d.open ?? 0, d.high ?? 0, d.low ?? 0, d.close ?? 0];
-            else yVal = [d.start ?? 0, d.end ?? 0];
+        data: data.map((d) => {
+          let yVal: number[] = [];
+
+          if (type === "boxplot") {
+            // Must be [Min, Q1, Median, Q3, Max]
+            yVal = [
+              d.min ?? 0,
+              d.q1 ?? 0,
+              d.median ?? 0,
+              d.q3 ?? 0,
+              d.max ?? 0
+            ];
+          } else if (type === "candlestick") {
+            // Must be [Open, High, Low, Close]
+            yVal = [d.open ?? 0, d.high ?? 0, d.low ?? 0, d.close ?? 0];
+          } else {
+            // RangeBar / Timeline: [Start, End]
+            yVal = [d.start ?? 0, d.end ?? 0];
           }
-          return { x: d.x ?? d.label ?? d.date ?? "Unknown", y: yVal };
-        })
+
+          return {
+            x: d.x ?? d.label ?? d.category ?? d.date ?? "Unknown",
+            y: yVal,
+          };
+        }),
       }];
       break;
 
-    default: // XY
+    /* ---------------------------------------------------------
+       HEATMAP
+    --------------------------------------------------------- */
+    case "heatmap":
       series = [{
         name: "Series 1",
-        data: data.map(d => ({
-          x: d.x ?? d[categoryKey],
-          y: d.y ?? d.value ?? 0,
-          ...(type === "bubble" && { z: d.r ?? d.z ?? 0 })
-        }))
+        data: data.map((d) => ({
+          x: String(d.x ?? "Unknown"),
+          y: d.value ?? d.y ?? 0,
+        })),
       }];
+      break;
+
+    /* ---------------------------------------------------------
+       XY (Line, Area, Scatter, Bubble)
+       Apex expects: series = [{ data: [{ x: 1, y: 2 }] }]
+    --------------------------------------------------------- */
+    default:
+      if (type === "bubble") {
+        series = [{
+          name: "Series 1",
+          data: data.map((d) => ({
+            x: d.x ?? 0,
+            y: d.y ?? 0,
+            z: d.r ?? d.z ?? d.value ?? 0, // 'z' is the radius in bubbles
+          })),
+        }];
+      } else if (numericKeys.length > 1) {
+        series = numericKeys.map((key) => ({
+          name: key,
+          data: data.map((d) => ({
+            x: d.x ?? d[categoryKey] ?? "Unknown",
+            y: d[key] ?? 0,
+          })),
+        }));
+      } else {
+        series = [{
+          name: "Series 1",
+          data: data.map((d) => ({
+            x: d.x ?? d[categoryKey] ?? "Unknown",
+            y: d.y ?? d.value ?? d[numericKeys[0]] ?? 0,
+          })),
+        }];
+      }
+      break;
   }
+
   return { series, labels, categories };
 };
-
-// import { chartEngine } from "./chartEngine";
-
-// export const transformData = (type: string, data: any[]) => {
-//   const engine = chartEngine[type] || "xy";
-
-//   let series: any = [];
-//   let labels: string[] = [];
-//   let categories: string[] = [];
-
-//   // 1. Safety Guard: If no data, return empty structures immediately
-//   if (!data || !Array.isArray(data) || data.length === 0) {
-//     return { series: [], labels: [], categories: [] };
-//   }
-
-//   const first = data[0];
-
-//   // Detect keys for mapping
-//   const numericKeys = Object.keys(first).filter(
-//     (k) => typeof first[k] === "number"
-//   );
-
-//   const categoryKey = Object.keys(first).find(
-//     (k) => typeof first[k] === "string"
-//   ) || "x";
-
-//   switch (engine) {
-//     /* ---------------------------------------------------------
-//        CIRCULAR (Pie, Donut, RadialBar)
-//        Apex expects: series = [44, 55, 13]
-//     --------------------------------------------------------- */
-//     case "circular":
-//       // Map to a flat array of numbers. Fallback to 0 to prevent 'length' errors.
-//       series = data.map((d) => {
-//         const val = typeof d === "number" ? d : (d.value ?? d.y ?? d.amount ?? 0);
-//         return Number(val);
-//       });
-
-//       labels = data.map(
-//         (d) => String(d.label ?? d.category ?? d.name ?? d.x ?? "Unknown")
-//       );
-//       break;
-
-//     /* ---------------------------------------------------------
-//        CATEGORY (Bar, Column, Radar, Funnel)
-//        Apex expects: series = [{ name: 'S1', data: [1, 2, 3] }]
-//     --------------------------------------------------------- */
-//     case "category":
-//       categories = data.map((d) => 
-//         String(d.x ?? d.category ?? d.stage ?? d[categoryKey] ?? "Unknown")
-//       );
-
-//       if (numericKeys.length > 1) {
-//         series = numericKeys.map((key) => ({
-//           name: key,
-//           data: data.map((d) => d[key] ?? 0),
-//         }));
-//       } else {
-//         series = [{
-//           name: numericKeys[0] || "Series 1",
-//           data: data.map((d) => d.y ?? d.value ?? d[numericKeys[0]] ?? 0),
-//         }];
-//       }
-//       break;
-
-//     /* ---------------------------------------------------------
-//        RANGE (Boxplot, Candlestick, RangeBar)
-//        Apex expects: y = [number, number, ...]
-//     --------------------------------------------------------- */
-//     case "range":
-//       series = [{
-//         name: "Series 1",
-//         data: data.map((d) => {
-//           let yVal: number[] = [];
-
-//           if (type === "boxplot") {
-//             // Must be [Min, Q1, Median, Q3, Max]
-//             yVal = [
-//               d.min ?? 0,
-//               d.q1 ?? 0,
-//               d.median ?? 0,
-//               d.q3 ?? 0,
-//               d.max ?? 0
-//             ];
-//           } else if (type === "candlestick") {
-//             // Must be [Open, High, Low, Close]
-//             yVal = [d.open ?? 0, d.high ?? 0, d.low ?? 0, d.close ?? 0];
-//           } else {
-//             // RangeBar / Timeline: [Start, End]
-//             yVal = [d.start ?? 0, d.end ?? 0];
-//           }
-
-//           return {
-//             x: d.x ?? d.label ?? d.category ?? d.date ?? "Unknown",
-//             y: yVal,
-//           };
-//         }),
-//       }];
-//       break;
-
-//     /* ---------------------------------------------------------
-//        HEATMAP
-//     --------------------------------------------------------- */
-//     case "heatmap":
-//       series = [{
-//         name: "Series 1",
-//         data: data.map((d) => ({
-//           x: String(d.x ?? "Unknown"),
-//           y: d.value ?? d.y ?? 0,
-//         })),
-//       }];
-//       break;
-
-//     /* ---------------------------------------------------------
-//        XY (Line, Area, Scatter, Bubble)
-//        Apex expects: series = [{ data: [{ x: 1, y: 2 }] }]
-//     --------------------------------------------------------- */
-//     default:
-//       if (type === "bubble") {
-//         series = [{
-//           name: "Series 1",
-//           data: data.map((d) => ({
-//             x: d.x ?? 0,
-//             y: d.y ?? 0,
-//             z: d.r ?? d.z ?? d.value ?? 0, // 'z' is the radius in bubbles
-//           })),
-//         }];
-//       } else if (numericKeys.length > 1) {
-//         series = numericKeys.map((key) => ({
-//           name: key,
-//           data: data.map((d) => ({
-//             x: d.x ?? d[categoryKey] ?? "Unknown",
-//             y: d[key] ?? 0,
-//           })),
-//         }));
-//       } else {
-//         series = [{
-//           name: "Series 1",
-//           data: data.map((d) => ({
-//             x: d.x ?? d[categoryKey] ?? "Unknown",
-//             y: d.y ?? d.value ?? d[numericKeys[0]] ?? 0,
-//           })),
-//         }];
-//       }
-//       break;
-//   }
-
-//   return { series, labels, categories };
-// };
 
 // import { chartEngine } from "./chartEngine"
 
