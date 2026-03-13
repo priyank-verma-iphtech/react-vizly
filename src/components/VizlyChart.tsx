@@ -32,10 +32,20 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     const chartRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<ApexCharts | null>(null);
-    const iconString = ReactDOMServer.renderToString(<BsArrowsAngleExpand size={12} />);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const modalChartRef = useRef<HTMLDivElement>(null);
     const modalInstance = useRef<ApexCharts | null>(null);
+
+    const iconString = ReactDOMServer.renderToString(
+  <BsArrowsAngleExpand 
+    size={12} 
+    style={{ 
+      color: '#9ca3af', 
+      verticalAlign: 'middle',
+      marginTop: '4px' 
+    }} 
+  />
+);
 
     
    
