@@ -18,42 +18,53 @@ export const detectChartType = (data: any[]): string => {
     if (first.y.length === 2) return "rangebar";
   }
 
-  /* --- SPECIFIC PROPERTY MAPPINGS --- */
+  /* --- SPECIFIC PROPERTY MAPPINGS (ordered from most specific to least) --- */
 
   // Bubble: x, y, r
-  if (first.r !== undefined && first.x !== undefined && first.y !== undefined) 
+  if (first.r !== undefined && first.x !== undefined && first.y !== undefined)
     return "bubble";
 
-  // Heatmap: x, y, value
-  if (first.value !== undefined && first.x !== undefined && first.y !== undefined) 
+  // Heatmap: x, value, y (all three present and x is not a date string)
+  if (
+    first.value !== undefined &&
+    first.x !== undefined &&
+    first.y !== undefined
+  )
     return "heatmap";
-
-  // Funnel: stage, value
-  if (first.stage && first.value !== undefined) return "funnel";
-
-  // Treemap: name, value
-  if (first.name && first.value !== undefined) return "treemap";
-
-  // Polar Area: category, value
-  if (first.category && first.value !== undefined) return "polararea";
-
-  // Donut/Pie: label, value
-  if (first.label && first.value !== undefined) return "donut";
 
   // Rangebar (Gantt style): start, end
   if (first.start !== undefined && first.end !== undefined) return "rangebar";
 
+  // Funnel: stage, value — must be checked before generic value checks
+  if (first.stage !== undefined && first.value !== undefined) return "funnel";
+
+  // Treemap: name, value — must NOT have category (that's polararea)
+  if (
+    first.name !== undefined &&
+    first.value !== undefined &&
+    first.category === undefined
+  )
+    return "treemap";
+
+  // Polar Area: category, value — after treemap so name+category+value → polararea
+  if (first.category !== undefined && first.value !== undefined)
+    return "polararea";
+
+  // BUG FIX: Donut/Pie: label, value — moved after category check
+  // { label, value } without a category is a simple pie/donut
+  if (first.label !== undefined && first.value !== undefined) return "donut";
+
   /* --- COORDINATE TYPES --- */
 
   // Scatter: x (number), y (number)
-  if (typeof first.x === "number" && typeof first.y === "number") 
+  if (typeof first.x === "number" && typeof first.y === "number")
     return "scatter";
 
-  // Line: x (date string)
-  if (typeof first.x === "string" && !isNaN(Date.parse(first.x))) 
+  // Line: x (date string), y (number)
+  if (typeof first.x === "string" && !isNaN(Date.parse(first.x)))
     return "line";
 
-  // Default Bar: x, y
+  // Default Bar: x, y present
   if (first.x !== undefined && first.y !== undefined) return "bar";
 
   return "bar";

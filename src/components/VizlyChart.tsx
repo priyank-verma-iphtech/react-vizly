@@ -11,6 +11,8 @@ import ReactDOMServer from "react-dom/server";
 import { BsArrowsAngleExpand, BsArrowsAngleContract } from "react-icons/bs";
 import { detectChartType } from "../utils/detectChartType";
 import { transformData } from "../utils/transformData";
+import { chartEngine } from "../utils/chartEngine";
+import { processChartData } from "../utils/transformMultiCharts";
 
 export interface VizlyProps {
   data: any[] | any[][];
@@ -58,39 +60,27 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     };
 
     const getChartConfig = (isModal: boolean) => {
-      const rawType = Array.isArray(finalType) ? finalType[0] : finalType;
-      const t = String(rawType).toLowerCase();
+      // 1. Process Data using your utility
+      const processed = processChartData(type, data);
+      if (!processed || processed.length === 0) return { series: [] };
 
-      let series: any[] = [];
-      let labels: string[] = [];
-      let categories: string[] = [];
+      const { 
+        type: detectedType, 
+        series, 
+        labels, 
+        categories 
+      } = processed[0];
 
-      if (Array.isArray(data[0])) {
-        const datasets = data as any[][];
-        series = datasets.map((d, i) => {
-          const chartType = Array.isArray(type) ? type[i] : (Array.isArray(finalType) ? finalType[i] : finalType);
-          const transformed = transformData(chartType as string, d);
-          if (categories.length === 0) categories = transformed.categories || [];
-          if (labels.length === 0) labels = transformed.labels || [];
-          return {
-            name: transformed.series?.[0]?.name || `Series ${i + 1}`,
-            type: mapApexType(chartType as string),
-            data: transformed.series?.[0]?.data || [],
-          };
-        });
-      } else {
-        const transformed = transformData(t, data as any[]);
-        series = transformed.series || [];
-        labels = transformed.labels || [];
-        categories = transformed.categories || [];
-      }
+      const t = String(detectedType).toLowerCase();
+      const engine = chartEngine[t] || "xy";
 
-      const isCircular = ["pie", "donut", "radialbar", "polararea"].includes(t);
+      // 2. Format Series correctly for Apex
+      const isCircular = engine === "circular";
       const isRadar = t === "radar";
-
-      // CRITICAL: Circular charts MUST have a flat number array, not objects
+      
+      // Circular charts need [10, 20], others need [{name, data}]
       const finalSeries = isCircular 
-        ? (series[0]?.data ? series[0].data : series) 
+        ? (series[0]?.data ? series[0].data : (Array.isArray(series) && typeof series[0] !== 'object' ? series : [])) 
         : series;
 
       return {
@@ -99,6 +89,7 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
           id: isModal ? "vizly-modal-chart" : "vizly-main-chart",
           type: mapApexType(t),
           height: "100%",
+          animations: { enabled: !isModal },
           toolbar: {
             show: true,
             tools: {
@@ -111,20 +102,21 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
               }],
             },
           },
-          animations: { enabled: !isModal },
           ...options.chart,
         },
-        series: finalSeries.length ? finalSeries : (isCircular ? [] : [{ data: [] }]),
-        labels: isCircular || isRadar ? (labels.length ? labels : categories) : undefined,
+        series: finalSeries,
+        // Radar and Circular charts use labels
+        labels: (isCircular || isRadar) ? (labels?.length ? labels : categories) : undefined,
         xaxis: {
+          // FORCE 'category' for bar/radar/funnel/heatmap
+          type: (engine === 'category' || engine === 'heatmap' || engine === 'range') ? 'category' : (options.xaxis?.type || 'category'),
+          categories: categories?.length ? categories : undefined,
           ...options.xaxis,
-          type: categories.length ? "category" : options.xaxis?.type || "numeric",
-          categories: categories.length ? categories : undefined,
         },
         plotOptions: {
           ...options.plotOptions,
           bar: {
-            horizontal: t === "funnel",
+            horizontal: t === "funnel" || t === "rangebar",
             isFunnel: t === "funnel",
             ...options.plotOptions?.bar,
           },

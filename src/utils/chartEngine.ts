@@ -3,8 +3,6 @@ export const chartEngine: Record<string, string> = {
   area: "xy",
   scatter: "xy",
   bubble: "xy",
-  slope: "xy",
-  mixed: "xy",
 
   bar: "category",
   column: "category",
@@ -16,10 +14,10 @@ export const chartEngine: Record<string, string> = {
   radialbar: "circular",
   polararea: "circular",
 
-  heatmap: "heatmap",
-  treemap: "treemap",
-
   rangebar: "range",
   candlestick: "range",
   boxplot: "range",
+
+  heatmap: "heatmap",
+  treemap: "treemap",
 };
