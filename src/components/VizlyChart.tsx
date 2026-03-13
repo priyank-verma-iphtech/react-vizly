@@ -38,12 +38,12 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
 
     const iconString = ReactDOMServer.renderToString(
   <BsArrowsAngleExpand 
-    size={12} 
+    size={14} 
     style={{ 
       color: '#9ca3af', 
       verticalAlign: 'middle',
       marginTop: '4px', 
-      marginLeft: '4px'
+      marginLeft: '6px'
     }} 
   />
 );
@@ -262,14 +262,14 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
                 onClick={() => setIsModalOpen(false)}
                 style={{
                   position: 'absolute',
-                  top: 8,
-                  right: 12,
+                  top: 10,
+                  right: 14,
                   border: 'none',
                   background: 'transparent',
                   fontSize: '18px',
                   cursor: 'pointer'
                 }}
-              ><BsArrowsAngleExpand size={12}/>
+              ><BsArrowsAngleExpand size={14}/>
               </button>
               
               <div ref={modalChartRef} style={{ height: '100%', width: '100%' }} />

@@ -3440,12 +3440,12 @@ const io = Li(
       /* @__PURE__ */ bt(
         yn,
         {
-          size: 12,
+          size: 14,
           style: {
             color: "#9ca3af",
             verticalAlign: "middle",
             marginTop: "4px",
-            marginLeft: "4px"
+            marginLeft: "6px"
           }
         }
       )
@@ -3612,14 +3612,14 @@ const io = Li(
             onClick: () => w(!1),
             style: {
               position: "absolute",
-              top: 8,
-              right: 12,
+              top: 10,
+              right: 14,
               border: "none",
               background: "transparent",
               fontSize: "18px",
               cursor: "pointer"
             },
-            children: /* @__PURE__ */ bt(yn, { size: 12 })
+            children: /* @__PURE__ */ bt(yn, { size: 14 })
           }
         ),
         /* @__PURE__ */ bt("div", { ref: P, style: { height: "100%", width: "100%" } })
