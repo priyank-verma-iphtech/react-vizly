@@ -15,8 +15,6 @@ export declare interface VizlyProps {
 }
 
 export declare interface VizlyRef {
-    zoomIn: () => void;
-    zoomOut: () => void;
     reset: () => void;
     toggleFullscreen: () => void;
 }
