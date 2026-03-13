@@ -1,124 +1,151 @@
 export const detectChartType = (data: any[]): string => {
+  if (!data || data.length === 0) return "bar";
+  const first = data[0];
 
-   if (!data || data.length === 0) return "bar"
+  if (typeof first === "number") return "donut";
+  if (typeof first !== "object") return "bar";
+
+  // Specialized keys
+  if (first.stage && first.value) return "funnel";
+  if (first.label && first.value) return "donut";
+  if (first.category && first.value) return "polararea";
+  
+  // Array-based Y values (Range Engine)
+  if (Array.isArray(first.y)) {
+    if (first.y.length === 4) return "candlestick";
+    if (first.y.length === 5) return "boxplot";
+    if (first.y.length === 2) return "rangebar";
+  }
+
+  // Fallback detections
+  if (first.x !== undefined && first.y !== undefined && first.r !== undefined) return "bubble";
+  if (first.start !== undefined && first.end !== undefined) return "slope";
+  if (first.x !== undefined && first.y !== undefined) return "bar";
+
+  return "bar";
+};
+
+// export const detectChartType = (data: any[]): string => {
+
+//    if (!data || data.length === 0) return "bar"
  
-   const first = data[0]
+//    const first = data[0]
  
-   if (typeof first === "number")
-     return "donut"
+//    if (typeof first === "number")
+//      return "donut"
  
-   if (typeof first !== "object")
-     return "bar"
+//    if (typeof first !== "object")
+//      return "bar"
  
-   const keys = Object.keys(first)
+//    const keys = Object.keys(first)
  
-   const numericValues = Object.values(first).filter(
-     v => typeof v === "number"
-   )
+//    const numericValues = Object.values(first).filter(
+//      v => typeof v === "number"
+//    )
  
-   /* -----------------------------
-      FUNNEL
-   ------------------------------ */
+//    /* -----------------------------
+//       FUNNEL
+//    ------------------------------ */
  
-   if (first.stage && first.value)
-     return "funnel"
+//    if (first.stage && first.value)
+//      return "funnel"
  
-   /* -----------------------------
-      DONUT / PIE
-   ------------------------------ */
+//    /* -----------------------------
+//       DONUT / PIE
+//    ------------------------------ */
  
-   if (first.label && first.value)
-     return "donut"
+//    if (first.label && first.value)
+//      return "donut"
  
-   /* -----------------------------
-      POLAR AREA
-   ------------------------------ */
+//    /* -----------------------------
+//       POLAR AREA
+//    ------------------------------ */
  
-   if (first.category && first.value)
-     return "polararea"
+//    if (first.category && first.value)
+//      return "polararea"
  
-   /* -----------------------------
-      HEATMAP
-   ------------------------------ */
+//    /* -----------------------------
+//       HEATMAP
+//    ------------------------------ */
  
-   if (first.x !== undefined && first.y !== undefined && first.value !== undefined)
-     return "heatmap"
+//    if (first.x !== undefined && first.y !== undefined && first.value !== undefined)
+//      return "heatmap"
  
-   /* -----------------------------
-      TREEMAP
-   ------------------------------ */
+//    /* -----------------------------
+//       TREEMAP
+//    ------------------------------ */
  
-   if (first.name && first.value && Array.isArray(first.children))
-     return "treemap"
+//    if (first.name && first.value && Array.isArray(first.children))
+//      return "treemap"
  
-   /* -----------------------------
-      CANDLESTICK
-      y: [open,high,low,close]
-   ------------------------------ */
+//    /* -----------------------------
+//       CANDLESTICK
+//       y: [open,high,low,close]
+//    ------------------------------ */
  
-   if (Array.isArray(first.y) && first.y.length === 4)
-     return "candlestick"
+//    if (Array.isArray(first.y) && first.y.length === 4)
+//      return "candlestick"
  
-   /* -----------------------------
-      BOX PLOT
-      y:[min,q1,median,q3,max]
-   ------------------------------ */
+//    /* -----------------------------
+//       BOX PLOT
+//       y:[min,q1,median,q3,max]
+//    ------------------------------ */
  
-   if (Array.isArray(first.y) && first.y.length === 5)
-     return "boxplot"
+//    if (Array.isArray(first.y) && first.y.length === 5)
+//      return "boxplot"
  
-   /* -----------------------------
-      RANGE BAR
-      y:[start,end]
-   ------------------------------ */
+//    /* -----------------------------
+//       RANGE BAR
+//       y:[start,end]
+//    ------------------------------ */
  
-   if (Array.isArray(first.y) && first.y.length === 2)
-     return "rangebar"
+//    if (Array.isArray(first.y) && first.y.length === 2)
+//      return "rangebar"
  
-   /* -----------------------------
-      BUBBLE
-   ------------------------------ */
+//    /* -----------------------------
+//       BUBBLE
+//    ------------------------------ */
  
-   if (first.x !== undefined && first.y !== undefined && first.r !== undefined)
-     return "bubble"
+//    if (first.x !== undefined && first.y !== undefined && first.r !== undefined)
+//      return "bubble"
  
-   /* -----------------------------
-      SCATTER
-   ------------------------------ */
+//    /* -----------------------------
+//       SCATTER
+//    ------------------------------ */
  
-   if (typeof first.x === "number" && typeof first.y === "number")
-     return "scatter"
+//    if (typeof first.x === "number" && typeof first.y === "number")
+//      return "scatter"
  
-   /* -----------------------------
-      DATE BASED LINE
-   ------------------------------ */
+//    /* -----------------------------
+//       DATE BASED LINE
+//    ------------------------------ */
  
-   if (first.x && !isNaN(Date.parse(first.x)))
-     return "line"
+//    if (first.x && !isNaN(Date.parse(first.x)))
+//      return "line"
  
-   /* -----------------------------
-      SLOPE
-   ------------------------------ */
+//    /* -----------------------------
+//       SLOPE
+//    ------------------------------ */
  
-   if (first.start !== undefined && first.end !== undefined)
-     return "slope"
+//    if (first.start !== undefined && first.end !== undefined)
+//      return "slope"
  
-   /* -----------------------------
-      MULTI SERIES
-   ------------------------------ */
+//    /* -----------------------------
+//       MULTI SERIES
+//    ------------------------------ */
  
-   if (numericValues.length > 1)
-     return "mixed"
+//    if (numericValues.length > 1)
+//      return "mixed"
  
-   /* -----------------------------
-      CATEGORY BAR
-   ------------------------------ */
+//    /* -----------------------------
+//       CATEGORY BAR
+//    ------------------------------ */
  
-   if (first.x !== undefined && first.y !== undefined)
-     return "bar"
+//    if (first.x !== undefined && first.y !== undefined)
+//      return "bar"
  
-   return "bar"
- }
+//    return "bar"
+//  }
 
 // export const detectChartType = (data: any[]) => {
 
