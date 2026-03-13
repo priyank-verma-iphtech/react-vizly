@@ -10,7 +10,6 @@ import ApexCharts from "apexcharts";
 import ReactDOMServer from "react-dom/server";
 import { BsArrowsAngleExpand, BsArrowsAngleContract } from "react-icons/bs";
 import { detectChartType } from "../utils/detectChartType";
-import { transformData } from "../utils/transformData";
 import { chartEngine } from "../utils/chartEngine";
 import { processChartData } from "../utils/transformMultiCharts";
 
@@ -43,14 +42,6 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
         ), []
     );
 
-    const finalType = useMemo(() => {
-      if (type) return type;
-      if (Array.isArray(data[0])) {
-        return (data as any[][]).map((d) => detectChartType(d));
-      }
-      return detectChartType(data as any[]);
-    }, [data, type]);
-
     const mapApexType = (t: string) => {
       const typeStr = String(t).toLowerCase();
       if (typeStr === "column") return "bar";
@@ -60,27 +51,19 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     };
 
     const getChartConfig = (isModal: boolean) => {
-      // 1. Process Data using your utility
       const processed = processChartData(type, data);
       if (!processed || processed.length === 0) return { series: [] };
 
-      const { 
-        type: detectedType, 
-        series, 
-        labels, 
-        categories 
-      } = processed[0];
-
-      const t = String(detectedType).toLowerCase();
+      const { type: dType, series, labels, categories } = processed[0];
+      const t = String(dType).toLowerCase();
       const engine = chartEngine[t] || "xy";
 
-      // 2. Format Series correctly for Apex
       const isCircular = engine === "circular";
       const isRadar = t === "radar";
       
-      // Circular charts need [10, 20], others need [{name, data}]
+      // Ensure series format matches engine type
       const finalSeries = isCircular 
-        ? (series[0]?.data ? series[0].data : (Array.isArray(series) && typeof series[0] !== 'object' ? series : [])) 
+        ? (series[0]?.data ? series[0].data : series) 
         : series;
 
       return {
@@ -89,7 +72,13 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
           id: isModal ? "vizly-modal-chart" : "vizly-main-chart",
           type: mapApexType(t),
           height: "100%",
-          animations: { enabled: !isModal },
+          width: "100%", // Requirement 3: Keep inside div
+          animations: {
+            enabled: true, // Requirement 2: Animations enabled
+            speed: 800,
+            animateGradually: { enabled: true },
+            dynamicAnimation: { enabled: true }
+          },
           toolbar: {
             show: true,
             tools: {
@@ -104,11 +93,18 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
           },
           ...options.chart,
         },
+        // Requirement 4: Prevent X-axis labels from cutting off
+        grid: {
+          padding: {
+            left: 20,
+            right: 20,
+            bottom: 10
+          },
+          ...options.grid
+        },
         series: finalSeries,
-        // Radar and Circular charts use labels
         labels: (isCircular || isRadar) ? (labels?.length ? labels : categories) : undefined,
         xaxis: {
-          // FORCE 'category' for bar/radar/funnel/heatmap
           type: (engine === 'category' || engine === 'heatmap' || engine === 'range') ? 'category' : (options.xaxis?.type || 'category'),
           categories: categories?.length ? categories : undefined,
           ...options.xaxis,
@@ -120,6 +116,9 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
             isFunnel: t === "funnel",
             ...options.plotOptions?.bar,
           },
+          // Fix 1: Ensure specialized charts have required plotOptions
+          boxPlot: { colors: { upper: '#00E396', lower: '#008FFB' } },
+          bubble: { minBubbleRadius: 5, maxBubbleRadius: 40 }
         },
         title: {
           text: typeof title === "string" ? title : title?.text || options.title?.text,
@@ -129,52 +128,39 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       };
     };
 
+    // Main Chart Initialization
     useEffect(() => {
       let isMounted = true;
-      const container = chartRef.current;
-      if (!container) return;
-
       const initChart = async () => {
-        // 1. Destroy previous instance fully
         if (chartInstance.current) {
-          try {
-            await chartInstance.current.destroy();
-          } catch (e) { /* ignore */ }
+          await chartInstance.current.destroy();
         }
+        if (!isMounted || !chartRef.current) return;
 
-        if (!isMounted) return;
-
+        chartRef.current.innerHTML = ''; // Clean slate
         const config = getChartConfig(false);
-        // 2. Clear HTML to prevent "el" property collisions
-        container.innerHTML = ''; 
-        
-        chartInstance.current = new ApexCharts(container, config);
-        chartInstance.current.render().catch(err => console.error("Render error:", err));
+        chartInstance.current = new ApexCharts(chartRef.current, config);
+        await chartInstance.current.render();
       };
 
       initChart();
-
       return () => {
         isMounted = false;
         chartInstance.current?.destroy();
-        chartInstance.current = null;
       };
-    }, [data, finalType, options, title]);
+    }, [data, type, options, title]);
 
+    // Modal Chart Initialization (Requirement 2: Transition sync)
     useEffect(() => {
       if (isModalOpen && modalChartRef.current) {
-        const config = getChartConfig(true);
-        const timer = setTimeout(() => {
-          if (modalInstance.current) modalInstance.current.destroy();
+        const timer = setTimeout(async () => {
+          if (modalInstance.current) await modalInstance.current.destroy();
+          modalChartRef.current!.innerHTML = '';
+          const config = getChartConfig(true);
           modalInstance.current = new ApexCharts(modalChartRef.current!, config);
-          modalInstance.current.render();
-        }, 150);
-
-        return () => {
-          clearTimeout(timer);
-          modalInstance.current?.destroy();
-          modalInstance.current = null;
-        };
+          await modalInstance.current.render();
+        }, 350); // Matches the CSS transition time
+        return () => clearTimeout(timer);
       }
     }, [isModalOpen]);
 
@@ -186,13 +172,34 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     }));
 
     return (
-      <div style={{ height, width: "100%", position: "relative" }}>
-        <div ref={chartRef} style={{ height: "100%", width: "100%" }} />
+      <div style={{ height, width: "100%", position: "relative", overflow: "hidden" }}>
+        {/* Requirement 3: Container overflow hidden */}
+        <div ref={chartRef} style={{ height: "100%", width: "100%", overflow: "hidden" }} />
+
         {isModalOpen && (
-          <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
-            <div style={{ width: "90%", height: "80%", background: "#fff", borderRadius: "12px", padding: "40px", position: "relative" }}>
-              <button onClick={() => setIsModalOpen(false)} style={{ position: "absolute", top: 15, right: 15, border: 'none', background: 'none', cursor: "pointer" }}>
-                <BsArrowsAngleContract size={20} />
+          <div style={{
+            position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)",
+            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
+            animation: "vizlyFadeIn 0.3s ease-out", // Requirement 2
+            backdropFilter: "blur(5px)"
+          }}>
+            <style>{`
+              @keyframes vizlyFadeIn { from { opacity: 0; } to { opacity: 1; } }
+              @keyframes vizlyScaleUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+            `}</style>
+            <div style={{
+              width: "90%", height: "80%", background: "#fff", borderRadius: "16px",
+              padding: "40px", position: "relative",
+              animation: "vizlyScaleUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)" // Requirement 2
+            }}>
+              <button 
+                onClick={() => setIsModalOpen(false)} 
+                style={{ 
+                  position: "absolute", top: 20, right: 20, border: 'none', 
+                  background: '#f3f4f6', padding: '8px', borderRadius: '50%', cursor: "pointer" 
+                }}
+              >
+                <BsArrowsAngleContract size={18} />
               </button>
               <div ref={modalChartRef} style={{ height: "100%", width: "100%" }} />
             </div>
