@@ -40,7 +40,7 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
 
     const expandIconString = useMemo(
       () => ReactDOMServer.renderToString(
-          <BsArrowsAngleExpand size={14} style={{ color: "#9ca3af", marginTop: "5px", marginRight:"4px" }} />
+          <BsArrowsAngleExpand size={14} style={{ color: "#9ca3af", marginTop: "5px", marginLeft:"4px" }} />
         ), []
     );
 
@@ -56,7 +56,6 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       const processed = processChartData(type, data);
       if (!processed || processed.length === 0) return { series: [] };
 
-      // We extract from the first processed group
       const { type: dType, series, labels, categories } = processed[0];
       const t = String(dType).toLowerCase();
       const engine = chartEngine[t] || "xy";
@@ -64,25 +63,16 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       const isCircular = engine === "circular";
       const isRadar = t === "radar";
       
-      /**
-       * FIX 1: SERIES TRANSFORMATION
-       * Pie/Donut/Radial MUST be [44, 55, 13]
-       * Bar/Line/Mixed MUST be [{ name: 'x', data: [...] }]
-       */
+      // FIX: Ensure Pie/Donut get flat arrays, while XY/Bar get Object arrays
       let finalSeries: any = series;
       if (isCircular) {
-        if (series.length > 0 && typeof series[0] === 'object') {
-          // If series is [{name: '...', data: [10, 20]}], extract the data array
-          finalSeries = series[0].data || series.map((s: any) => s.data?.[0] ?? 0);
+        // If series is [{data: [10, 20]}], flatten it to [10, 20]
+        if (Array.isArray(series) && series[0]?.data) {
+          finalSeries = series[0].data;
+        } else if (Array.isArray(series) && typeof series[0] === 'object') {
+          finalSeries = series.map((item: any) => item.y ?? item.value ?? 0);
         }
       }
-
-      /**
-       * FIX 2: MIXED DATASETS
-       * If we have multiple series, ensure each has a 'type' property
-       */
-      const isMixed = Array.isArray(data[0]);
-      const finalOptionsSeries = isMixed ? series : finalSeries;
 
       return {
         ...options,
@@ -90,7 +80,7 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
           id: isModal ? "vizly-modal-chart" : "vizly-main-chart",
           type: mapApexType(t),
           height: "100%",
-          width: "100%",
+          width: "100%", // Fix: Containment
           animations: { enabled: true, speed: 800 },
           toolbar: {
             show: true,
@@ -104,16 +94,15 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
           ...options.chart,
         },
         grid: {
-          padding: { left: 20, right: 20, bottom: 10 },
+          padding: { left: 20, right: 20, bottom: 10 }, // Fix: X-axis bleed
           ...options.grid
         },
-        series: finalOptionsSeries,
-        // Radar/Circular use 'labels'. Heatmap/Bar use 'xaxis.categories'
+        series: finalSeries,
         labels: (isCircular || isRadar) ? (labels?.length ? labels : categories) : undefined,
         xaxis: {
-          // FORCE 'category' for heatmaps and category engines to prevent rendering errors
+          // Fix: Heatmap and Range charts MUST have 'category' or 'datetime' type
           type: (engine === 'category' || engine === 'heatmap' || engine === 'range') ? 'category' : (options.xaxis?.type || 'category'),
-          categories: categories?.length ? categories : undefined,
+          categories: (isCircular || isRadar) ? undefined : (categories?.length ? categories : undefined),
           ...options.xaxis,
         },
         plotOptions: {
@@ -135,7 +124,6 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
         tooltip: { theme: "dark", ...options.tooltip },
       };
     };
-
     // Initialization logic stays mostly the same, but we ensure destruction is awaited
     useEffect(() => {
       let isMounted = true;
@@ -178,7 +166,7 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
            <div style={{
             position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)",
             display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
-            animation: "vizlyFadeIn 0.3s ease-out", backdropFilter: "blur(5px)"
+            animation: "vizlyFadeIn 0.1s ease-out", backdropFilter: "blur(5px)"
           }}>
             <style>{`
               @keyframes vizlyFadeIn { from { opacity: 0; } to { opacity: 1; } }

@@ -1,71 +1,39 @@
+export const chartEngine: Record<string, string> = {
+  line: "xy", area: "xy", scatter: "xy", bubble: "xy",
+  bar: "category", column: "category", radar: "category", funnel: "category",
+  pie: "circular", donut: "circular", radialbar: "circular", polararea: "circular",
+  rangebar: "range", candlestick: "range", boxplot: "range",
+  heatmap: "heatmap", treemap: "treemap",
+};
+
 export const detectChartType = (data: any[]): string => {
-  // 1. Guard against empty data
   if (!data || !Array.isArray(data) || data.length === 0) return "bar";
-
   const first = data[0];
-
-  // 2. Handle primitive arrays [10, 20, 30]
   if (typeof first === "number") return "donut";
-
-  // 3. Ensure 'first' is an object before checking properties
   if (typeof first !== "object" || first === null) return "bar";
 
-  /* --- COMPLEX / MULTI-VALUE TYPES (Check these first!) --- */
-
+  // 1. Range / Financial (Check for specific arrays or property groups)
   if (Array.isArray(first.y)) {
     if (first.y.length === 5) return "boxplot";
     if (first.y.length === 4) return "candlestick";
     if (first.y.length === 2) return "rangebar";
   }
-
-  /* --- SPECIFIC PROPERTY MAPPINGS (ordered from most specific to least) --- */
-
-  // Bubble: x, y, r
-  if (first.r !== undefined && first.x !== undefined && first.y !== undefined)
-    return "bubble";
-
-  // Heatmap: x, value, y (all three present and x is not a date string)
-  if (
-    first.value !== undefined &&
-    first.x !== undefined &&
-    first.y !== undefined
-  )
-    return "heatmap";
-
-  // Rangebar (Gantt style): start, end
+  if (first.open !== undefined && first.close !== undefined) return "candlestick";
+  if (first.min !== undefined && first.max !== undefined) return "boxplot";
   if (first.start !== undefined && first.end !== undefined) return "rangebar";
 
-  // Funnel: stage, value — must be checked before generic value checks
-  if (first.stage !== undefined && first.value !== undefined) return "funnel";
+  // 2. Specialty Types
+  if (first.r !== undefined || first.z !== undefined) return "bubble";
+  if (first.stage !== undefined) return "funnel";
+  if (first.group !== undefined) return "heatmap"; // Heatmap needs grouping
+  if (first.name !== undefined && first.value !== undefined) return "treemap";
 
-  // Treemap: name, value — must NOT have category (that's polararea)
-  if (
-    first.name !== undefined &&
-    first.value !== undefined &&
-    first.category === undefined
-  )
-    return "treemap";
-
-  // Polar Area: category, value — after treemap so name+category+value → polararea
-  if (first.category !== undefined && first.value !== undefined)
-    return "polararea";
-
-  // BUG FIX: Donut/Pie: label, value — moved after category check
-  // { label, value } without a category is a simple pie/donut
+  // 3. Circular
   if (first.label !== undefined && first.value !== undefined) return "donut";
 
-  /* --- COORDINATE TYPES --- */
-
-  // Scatter: x (number), y (number)
-  if (typeof first.x === "number" && typeof first.y === "number")
-    return "scatter";
-
-  // Line: x (date string), y (number)
-  if (typeof first.x === "string" && !isNaN(Date.parse(first.x)))
-    return "line";
-
-  // Default Bar: x, y present
-  if (first.x !== undefined && first.y !== undefined) return "bar";
+  // 4. XY / Category defaults
+  if (typeof first.x === "number" && typeof first.y === "number") return "scatter";
+  if (typeof first.x === "string" && !isNaN(Date.parse(first.x))) return "line";
 
   return "bar";
 };
