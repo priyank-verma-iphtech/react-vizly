@@ -18,6 +18,7 @@ export interface VizlyProps {
   options?: any;
   height?: number | string;
   title?: string | { text: string; align?: 'left' | 'center' | 'right'; style?: any };
+  colors?: string[]; // Added color option
 }
 
 export interface VizlyRef {
@@ -26,17 +27,18 @@ export interface VizlyRef {
 }
 
 const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
-  ({ data, type, options = {}, height = 350, title }, ref) => {
+  ({ data, type, options = {}, height = 350, title, colors }, ref) => {
     const chartRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<ApexCharts | null>(null);
     const [isExpanded, setIsExpanded] = useState(false);
 
-    // 1. Memoize Icon to prevent toolbar flickering
+    // 1. Memoize Icon
     const expandIconHtml = useMemo(() => ReactDOMServer.renderToString(
       <BsArrowsAngleExpand size={14} style={{ color: '#9ca3af', marginTop: '4px' }} />
     ), []);
 
     const finalType = useMemo(() => {
+      if (!data || data.length === 0) return "line";
       if (type) return type;
       if (Array.isArray(data[0])) return (data as any[][]).map((d) => detectChartType(d));
       return detectChartType(data as any[]);
@@ -48,25 +50,31 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       let series: any = [];
       let labels: any = [];
       let categories: any = [];
-      
+
+      // Transform data based on detected or provided type
       if (Array.isArray(data[0])) {
-        series = (data as any[][]).map((d, i) => ({
-          name: `Series ${i + 1}`,
-          type: Array.isArray(type) ? type[i] : (type || (Array.isArray(finalType) ? finalType[i] : finalType)),
-          ...transformData(Array.isArray(finalType) ? (finalType[i] as string) : (finalType as string), d).series[0],
-        }));
+        series = (data as any[][]).map((d, i) => {
+          const sType = Array.isArray(finalType) ? finalType[i] : finalType;
+          return {
+            name: `Series ${i + 1}`,
+            type: sType,
+            ...transformData(sType as string, d).series[0],
+          };
+        });
       } else {
-        const transformed = transformData(finalType as string, data as any[]);
+        const transformed = transformData(t, data as any[]);
         series = transformed.series;
         labels = transformed.labels;
         categories = transformed.categories;
       }
 
-      return {
+      const cfg: any = {
         ...options,
+        // USER COLORS: Priority: options.colors > props.colors > default Apex colors
+        colors: options.colors || colors || undefined,
         chart: {
-          id: "vizly-main-chart", 
-          type: t === "funnel" || t === "column" ? "bar" : t,
+          id: "vizly-main-chart",
+          type: (t === "funnel" || t === "column" || t === "rangebar") ? "bar" : t,
           height: "100%",
           width: "100%",
           toolbar: {
@@ -74,15 +82,12 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
             tools: {
               download: true,
               zoom: true,
-              zoomin: true,
-              zoomout: true,
-              pan: true,
               reset: true,
               customIcons: [
                 {
                   icon: expandIconHtml,
                   index: 6,
-                  title: 'Center View',
+                  title: 'Toggle Center View',
                   class: 'custom-expand-icon',
                   click: () => setIsExpanded(prev => !prev)
                 }
@@ -93,51 +98,46 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
         },
         series,
         labels: labels?.length ? labels : undefined,
-        xaxis: categories?.length ? { categories, ...options.xaxis } : options.xaxis,
+        xaxis: categories?.length ? { ...options.xaxis, categories } : options.xaxis,
         title: {
           text: typeof title === 'string' ? title : title?.text,
           align: (typeof title === 'object' ? title?.align : 'left'),
           ...options.title
+        },
+        plotOptions: {
+          ...options.plotOptions,
+          bar: {
+            horizontal: t === "funnel" || t === "rangebar",
+            ...options.plotOptions?.bar
+          }
         }
       };
-    }, [data, finalType, options, title, expandIconHtml, type]);
+      return cfg;
+    }, [data, finalType, options, title, expandIconHtml, colors]);
 
-    // Initialize and update
+    // Render/Re-render Chart
     useEffect(() => {
-      if (!chartRef.current) return;
-      if (!chartInstance.current) {
-        chartInstance.current = new ApexCharts(chartRef.current, config);
-        chartInstance.current.render();
-      } else {
-        chartInstance.current.updateOptions(config);
+      if (!chartRef.current || !config.series?.length) return;
+
+      // CRITICAL: Always destroy the previous instance before creating a new one.
+      // This prevents the "yRatio" and "el" of undefined errors during type changes.
+      if (chartInstance.current) {
+        chartInstance.current.destroy();
       }
-    }, [config]);
 
- // Handle Resize & ESC key
-useEffect(() => {
-  const handleEsc = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') setIsExpanded(false);
-  };
-  
-  // We trigger this whether isExpanded is true OR false 
-  // to ensure the chart fits both the modal and the original slot.
-  const timer = setTimeout(() => {
-    if (chartInstance.current) {
-      // This is the "cleanest" way to fix the TS error.
-      // It forces the browser to tell ApexCharts: "Your container changed!"
-      window.dispatchEvent(new Event('resize'));
-    }
-  }, 100); // Slightly longer delay to ensure CSS transitions finish
+      chartInstance.current = new ApexCharts(chartRef.current, config);
+      chartInstance.current.render();
 
-  if (isExpanded) {
-    window.addEventListener('keydown', handleEsc);
-  }
-  
-  return () => {
-    window.removeEventListener('keydown', handleEsc);
-    clearTimeout(timer);
-  };
-}, [isExpanded]);
+      // Trigger resize if we just opened the modal
+      if (isExpanded) {
+        setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+      }
+
+      return () => {
+        chartInstance.current?.destroy();
+        chartInstance.current = null;
+      };
+    }, [config, isExpanded]);
 
     useImperativeHandle(ref, () => ({
       reset: () => chartInstance.current?.resetSeries(),
@@ -147,70 +147,26 @@ useEffect(() => {
     return (
       <div style={{ height: isExpanded ? '0' : height, width: '100%', position: 'relative' }}>
         <style>{`
-          /* Crucial: Ensure the download menu is visible above the overlay */
-          .apexcharts-menu { z-index: 1000001 !important; }
-          
-          .vizly-container-expanded {
-            position: fixed !important;
-            inset: 0 !important;
-            z-index: 1000000 !important;
-            background: rgba(0, 0, 0, 0.75);
-            display: flex !important;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+          .apexcharts-menu { z-index: 1000001 !important; pointer-events: auto !important; }
+          .vizly-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+            display: flex; align-items: center; justify-content: center; z-index: 1000000;
           }
-
-          .vizly-content-wrapper {
-            background: #fff;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 850px;
-            height: 550px;
-            position: relative;
-            padding: 20px;
+          .vizly-modal-content {
+            width: 90%; max-width: 850px; height: 550px; background: white;
+            border-radius: 12px; padding: 20px; position: relative;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
-          }
-
-          .vizly-close-btn {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            z-index: 10;
-            cursor: pointer;
-            border: none;
-            background: none;
-            color: #333;
-            display: flex;
-            align-items: center;
-            justify-content: center;
           }
         `}</style>
 
-        {/* This wrapper acts as either a standard div or a centered modal overlay */}
-        <div 
-          className={isExpanded ? "vizly-container-expanded" : ""}
-          onClick={() => setIsExpanded(false)}
-        >
+        <div className={isExpanded ? "vizly-overlay" : ""} onClick={() => setIsExpanded(false)}>
           <div 
-            className={isExpanded ? "vizly-content-wrapper" : ""}
+            className={isExpanded ? "vizly-modal-content" : ""}
             onClick={(e) => e.stopPropagation()}
             style={!isExpanded ? { height: '100%', width: '100%' } : {}}
           >
-            {isExpanded && (
-              <button className="vizly-close-btn" onClick={() => setIsExpanded(false)}>
-                <BsArrowsAngleContract size={18} />
-              </button>
-            )}
             
-            <div 
-              ref={chartRef} 
-              style={{ 
-                height: '100%', 
-                width: '100%',
-                background: isExpanded ? '#fff' : 'transparent' 
-              }} 
-            />
+            <div ref={chartRef} style={{ height: '100%', width: '100%' }} />
           </div>
         </div>
       </div>

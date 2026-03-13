@@ -12,6 +12,7 @@ export declare interface VizlyProps {
         align?: 'left' | 'center' | 'right';
         style?: any;
     };
+    colors?: string[];
 }
 
 export declare interface VizlyRef {
