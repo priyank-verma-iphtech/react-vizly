@@ -42,7 +42,8 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     style={{ 
       color: '#9ca3af', 
       verticalAlign: 'middle',
-      marginTop: '4px' 
+      marginTop: '4px', 
+      marginLeft: '4px'
     }} 
   />
 );
@@ -261,14 +262,15 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
                 onClick={() => setIsModalOpen(false)}
                 style={{
                   position: 'absolute',
-                  top: 10,
-                  right: 15,
+                  top: 8,
+                  right: 12,
                   border: 'none',
                   background: 'transparent',
-                  fontSize: '22px',
+                  fontSize: '18px',
                   cursor: 'pointer'
                 }}
-              >✕</button>
+              ><BsArrowsAngleExpand size={12}/>
+              </button>
               
               <div ref={modalChartRef} style={{ height: '100%', width: '100%' }} />
             </div>
