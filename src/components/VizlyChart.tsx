@@ -1,406 +1,192 @@
-import React,
-{
+import React, {
   useEffect,
   useRef,
-  useImperativeHandle,
-  forwardRef,
   useState,
   useMemo,
-  useCallback
+  forwardRef,
+  useImperativeHandle
 } from "react";
-
 import ApexCharts from "apexcharts";
-import { CiMaximize1 } from "react-icons/ci";
-import { RxCross1 } from "react-icons/rx";
+import ReactDOMServer from "react-dom/server";
+import { BsArrowsAngleExpand, BsArrowsAngleContract } from "react-icons/bs";
+import { detectChartType } from "../utils/detectChartType";
+import { chartEngine } from "../utils/chartEngine";
+import { processChartData } from "../utils/transformMultiCharts";
 
-// --- Types ---
 export interface VizlyProps {
-  data: any[];
-  type?: string; 
+  data: any[] | any[][];
+  type?: string | string[];
   options?: any;
   height?: number | string;
+  title?: string | { text: string; align?: "left" | "center" | "right"; style?: any };
 }
 
 export interface VizlyRef {
   zoomIn: () => void;
   zoomOut: () => void;
-  filter: (newData: any[]) => void;
   reset: () => void;
+  toggleFullscreen: () => void;
 }
 
-// --- Smart Inference Engine ---
-export const inferChartType = (data: any[]): string => {
-  if (!Array.isArray(data) || data.length === 0) return 'bar';
-  
-  const first = data[0];
 
-  // Simple number array -> Donut/Pie
-  if (typeof first === 'number') return 'donut';
-
-  // Coordinate data (x, y)
-  if (first?.x !== undefined && first?.y !== undefined) {
-    // Check if x is a date string or object
-    const isDate = first.x instanceof Date || 
-                  (typeof first.x === 'string' && isNaN(Number(first.x)) && !isNaN(Date.parse(first.x)));
-    
-    if (isDate) return 'area'; 
-    if (Array.isArray(first.y)) return 'rangeBar';
-    if (first?.z !== undefined) return 'bubble';
-    return 'line';
-  }
-
-  // Label/Value pairs
-  if (first?.label !== undefined && first?.value !== undefined) return 'donut';
-
-  return 'bar';
-};
 
 const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
-  ({ data, type, options = {}, height = 350 }, ref) => {
+  ({ data, type, options = {}, height = 350, title }, ref) => {
     const chartRef = useRef<HTMLDivElement>(null);
     const modalChartRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<ApexCharts | null>(null);
-    const modalChartInstance = useRef<ApexCharts | null>(null);
+    const modalInstance = useRef<ApexCharts | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const [showModal, setShowModal] = useState(false);
+    const expandIconString = useMemo(
+      () => ReactDOMServer.renderToString(
+          <BsArrowsAngleExpand size={14} style={{ color: "#9ca3af", marginTop: "5px", marginLeft:"4px" }} />
+        ), []
+    );
 
+    const mapApexType = (t: string) => {
+      const typeStr = String(t).toLowerCase();
+      if (typeStr === "column") return "bar";
+      if (typeStr === "rangebar") return "rangeBar";
+      if (typeStr === "funnel") return "bar";
+      return typeStr as any;
+    };
 
-    // -------- Determine Chart Type --------
+    const getChartConfig = (isModal: boolean) => {
+      const processed = processChartData(type, data);
+      if (!processed || processed.length === 0) return { series: [] };
 
-    const finalType = useMemo(() => {
-      return type || options?.chart?.type || inferChartType(data);
-    }, [data, type, options?.chart?.type]);
+      const { type: dType, series, labels, categories } = processed[0];
+      const t = String(dType).toLowerCase();
+      const engine = chartEngine[t] || "xy";
 
-
-    // -------- Series Formatter --------
-
-    const formatSeries = useCallback((incomingData: any[], chartType: string) => {
-
-      const safeData = Array.isArray(incomingData) ? incomingData : [];
-
-      const isCircular = ["pie", "donut", "radialBar"].includes(chartType);
-
+      const isCircular = engine === "circular";
+      const isRadar = t === "radar";
+      
+      // FIX: Ensure Pie/Donut get flat arrays, while XY/Bar get Object arrays
+      let finalSeries: any = series;
       if (isCircular) {
-        return safeData.map((item) =>
-          typeof item === "object" ? item.value : item
-        );
-      }
-    
-      // 🔹 BAR FIX
-      if (chartType === "bar" && safeData[0]?.x !== undefined) {
-        return [{
-          name: options?.seriesName || "Series 1",
-          data: safeData.map((d) => d.y)
-        }];
-      }
-    
-      return [{
-        name: options?.seriesName || "Series 1",
-        data: safeData
-      }];
-    }, [options?.seriesName]);
-
-    const getBaseConfig = useCallback((chartHeight: number | string) => {
-      const isCircular = ["pie", "donut", "radialBar"].includes(finalType);
-    
-      let series: any = [];
-      let labels: string[] | undefined = options?.labels;
-      let categories: any = options?.xaxis?.categories;
-    
-      if (isCircular) {
-        // donut / pie / radial
-        series = data.map((d: any) => (typeof d === "object" ? d.value : d));
-        labels = data.map((d: any) => d.label ?? d.x);
-      }
-    
-      else if (finalType === "bar") {
-        // categorical bars
-        if (data[0]?.x !== undefined) {
-          categories = data.map((d: any) => d.x);
-          series = [{
-            name: options?.seriesName || "Series 1",
-            data: data.map((d: any) => d.y)
-          }];
-        } else {
-          series = [{
-            name: options?.seriesName || "Series 1",
-            data
-          }];
+        // If series is [{data: [10, 20]}], flatten it to [10, 20]
+        if (Array.isArray(series) && series[0]?.data) {
+          finalSeries = series[0].data;
+        } else if (Array.isArray(series) && typeof series[0] === 'object') {
+          finalSeries = series.map((item: any) => item.y ?? item.value ?? 0);
         }
       }
-    
-      else if (["line", "area", "scatter"].includes(finalType)) {
-        // coordinate charts
-        series = [{
-          name: options?.seriesName || "Series 1",
-          data
-        }];
-      }
-    
-      else if (finalType === "rangeBar") {
-        series = [{
-          name: options?.seriesName || "Series 1",
-          data: data.map((d: any) => ({
-            x: d.x,
-            y: d.y
-          }))
-        }];
-      }
-    
-      else if (finalType === "bubble") {
-        series = [{
-          name: options?.seriesName || "Series 1",
-          data: data.map((d: any) => ({
-            x: d.x,
-            y: d.y,
-            z: d.z
-          }))
-        }];
-      }
-    
-      else {
-        // fallback
-        series = [{
-          name: options?.seriesName || "Series 1",
-          data
-        }];
-      }
-    
+
       return {
         ...options,
         chart: {
-          toolbar: { show: true },
+          id: isModal ? "vizly-modal-chart" : "vizly-main-chart",
+          type: mapApexType(t),
+          height: "100%",
+          width: "100%", // Fix: Containment
+          animations: { enabled: true, speed: 800 },
+          toolbar: {
+            show: true,
+            tools: {
+              customIcons: isModal ? [] : [{
+                icon: expandIconString, index: 6, title: "Expand", class: "custom-icon",
+                click: () => setIsModalOpen(true),
+              }],
+            },
+          },
           ...options.chart,
-          type: finalType,
-          height: chartHeight
         },
-    
-        series,
-    
-        labels,
-    
+        grid: {
+          padding: { left: 20, right: 20, bottom: 10 }, // Fix: X-axis bleed
+          ...options.grid
+        },
+        series: finalSeries,
+        labels: (isCircular || isRadar) ? (labels?.length ? labels : categories) : undefined,
         xaxis: {
-          ...options?.xaxis,
-          categories
-        }
+          // Fix: Heatmap and Range charts MUST have 'category' or 'datetime' type
+          type: (engine === 'category' || engine === 'heatmap' || engine === 'range') ? 'category' : (options.xaxis?.type || 'category'),
+          categories: (isCircular || isRadar) ? undefined : (categories?.length ? categories : undefined),
+          ...options.xaxis,
+        },
+        plotOptions: {
+          ...options.plotOptions,
+          bar: {
+            horizontal: t === "funnel" || t === "rangebar",
+            isFunnel: t === "funnel",
+            ...options.plotOptions?.bar,
+          },
+          heatmap: {
+            enableShades: true,
+            colorScale: { ranges: options.plotOptions?.heatmap?.colorScale?.ranges || [] }
+          }
+        },
+        title: {
+          text: typeof title === "string" ? title : title?.text || options.title?.text,
+          align: typeof title === "object" ? title.align : options.title?.align || "left",
+        },
+        tooltip: { theme: "dark", ...options.tooltip },
       };
-    
-    }, [data, finalType, options]);
+    };
+    // Initialization logic stays mostly the same, but we ensure destruction is awaited
+    useEffect(() => {
+      let isMounted = true;
+      const initChart = async () => {
+        if (chartInstance.current) await chartInstance.current.destroy();
+        if (!isMounted || !chartRef.current) return;
 
-    // 3. Imperative API (Exposing internal Apex methods safely)
+        chartRef.current.innerHTML = '';
+        const config = getChartConfig(false);
+        chartInstance.current = new ApexCharts(chartRef.current, config);
+        await chartInstance.current.render();
+      };
+      initChart();
+      return () => { isMounted = false; chartInstance.current?.destroy(); };
+    }, [data, type, options]);
+
+    useEffect(() => {
+      if (isModalOpen && modalChartRef.current) {
+        const timer = setTimeout(async () => {
+          if (modalInstance.current) await modalInstance.current.destroy();
+          modalChartRef.current!.innerHTML = '';
+          modalInstance.current = new ApexCharts(modalChartRef.current!, getChartConfig(true));
+          await modalInstance.current.render();
+        }, 350);
+        return () => clearTimeout(timer);
+      }
+    }, [isModalOpen]);
+
     useImperativeHandle(ref, () => ({
-
-      zoomIn: () => {
-        const chart = chartInstance.current as any;
-        if (!chart?.w) return;
-
-        const { min, max } =
-          chart.w.globals.lastXAxis ||
-          { min: chart.w.globals.minX, max: chart.w.globals.maxX };
-
-        const diff = (max - min) * 0.2;
-
-        chart.zoomX(min + diff, max - diff);
-      },
-
-      zoomOut: () => chartInstance.current?.resetSeries(),
-
-      filter: (newData: any[]) => {
-        chartInstance.current?.updateSeries(
-          formatSeries(newData, finalType)
-        );
-      },
-
-      reset: () => chartInstance.current?.resetSeries()
-
+      zoomIn: () => chartInstance.current?.zoomX(0, 100),
+      zoomOut: () => chartInstance.current?.zoomX(0, 100),
+      reset: () => chartInstance.current?.resetSeries(),
+      toggleFullscreen: () => setIsModalOpen(!isModalOpen),
     }));
 
-
-    // -------- Main Chart Lifecycle --------
-
-    useEffect(() => {
-
-      if (!chartRef.current) return;
-
-      const config = getBaseConfig(height);
-
-      if (!chartInstance.current) {
-
-        const newChart = new ApexCharts(chartRef.current, config);
-
-        chartInstance.current = newChart;
-
-        newChart.render().catch(() => {});
-
-      } else {
-
-        chartInstance.current.updateOptions(config, false, true);
-
-      }
-
-      return () => {
-
-        if (chartInstance.current) {
-
-          chartInstance.current.destroy();
-
-          chartInstance.current = null;
-
-        }
-
-      };
-
-    }, [getBaseConfig, height]);
-
-
-    // -------- Modal Chart --------
-
-    // 6. Modal Chart Lifecycle
-    useEffect(() => {
-
-      if (showModal && modalChartRef.current) {
-
-        const config = getBaseConfig("100%");
-
-        modalChartInstance.current = new ApexCharts(
-          modalChartRef.current,
-          config
-        );
-
-        modalChartInstance.current.render().catch(() => {});
-
-      }
-
-      return () => {
-
-        if (modalChartInstance.current) {
-
-          modalChartInstance.current.destroy();
-
-          modalChartInstance.current = null;
-
-        }
-
-      };
-
-    }, [showModal, getBaseConfig]);
-
-
-    // -------- UI --------
-
     return (
-      <div style={containerStyle}>
-
-        <button
-          onClick={() => setShowModal(true)}
-          style={iconButtonStyle}
-          title="Full Screen"
-        >
-          <CiMaximize1 size={12} />
-        </button>
-
-        <div ref={chartRef} />
-
-        {showModal && (
-
-          <div style={modalOverlayStyle}>
-
-            <div style={modalContentStyle}>
-
-              <div style={modalHeaderStyle}>
-
-                <h3 style={{ margin: 0 }}>Detailed View</h3>
-
-                <button
-                  onClick={() => setShowModal(false)}
-                  style={closeButtonStyle}
-                >
-                  <RxCross1 size={12} />
-                </button>
-
-              </div>
-
-              <div
-                ref={modalChartRef}
-                style={{ flex: 1, width: "100%" }}
-              />
-
+      <div style={{ height, width: "100%", position: "relative", overflow: "hidden" }}>
+        <div ref={chartRef} style={{ height: "100%", width: "100%", overflow: "hidden" }} />
+        {isModalOpen && (
+           <div style={{
+            position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)",
+            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
+            animation: "vizlyFadeIn 0.1s ease-out", backdropFilter: "blur(5px)"
+          }}>
+            <style>{`
+              @keyframes vizlyFadeIn { from { opacity: 0; } to { opacity: 1; } }
+              @keyframes vizlyScaleUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+            `}</style>
+            <div style={{
+              width: "90%", height: "80%", background: "#fff", borderRadius: "16px",
+              padding: "40px", position: "relative",
+              animation: "vizlyScaleUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)" 
+            }}>
+              <button onClick={() => setIsModalOpen(false)} style={{ position: "absolute", top: 15, right: 15, cursor: "pointer", border: 'none', background: 'transparent' }}>
+                <BsArrowsAngleContract size={18} />
+              </button>
+              <div ref={modalChartRef} style={{ height: "100%", width: "100%" }} />
             </div>
-
           </div>
-
         )}
-
       </div>
     );
-
   }
 );
-
-
-// ---------------- STYLES ----------------
-
-const containerStyle: React.CSSProperties = {
-  position: "relative",
-  width: "100%",
-  background: "#fff"
-};
-
-const iconButtonStyle: React.CSSProperties = {
-  position: "absolute",
-  right: "6px",
-  top: "6px",
-  zIndex: 10,
-  background: "#f8fafc",
-  cursor: "pointer",
-  padding: "6px",
-  display: "flex",
-  alignItems: "center"
-};
-
-const modalOverlayStyle: React.CSSProperties = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  width: "100vw",
-  height: "100vh",
-  backgroundColor: "rgba(15,23,42,0.9)",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  zIndex: 9999,
-  backdropFilter: "blur(4px)"
-};
-
-const modalContentStyle: React.CSSProperties = {
-  width: "90%",
-  height: "85%",
-  backgroundColor: "#fff",
-  borderRadius: "16px",
-  padding: "25px",
-  display: "flex",
-  flexDirection: "column"
-};
-
-const modalHeaderStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: "20px",
-  paddingBottom: "15px",
-  borderBottom: "1px solid #f1f5f9"
-};
-
-const closeButtonStyle: React.CSSProperties = {
-  background: "#f1f5f9",
-  border: "none",
-  borderRadius: "50%",
-  width: "36px",
-  height: "36px",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center"
-};
 
 export default VizlyChart;
