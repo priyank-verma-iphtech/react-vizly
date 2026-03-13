@@ -1,6 +1,6 @@
 {
   "name": "react-vizly",
-  "version": "1.0.50",
+  "version": "1.0.51",
   "type": "module",
   "description": "Custom React chart library using ApexCharts",
   "main": "./dist/react-vizly.umd.cjs",
