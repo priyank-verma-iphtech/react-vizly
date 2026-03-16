@@ -54,11 +54,11 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       return () => { _handlers.delete(instanceId); };
     }, [instanceId]);
 
-    // const expandIconString = useMemo(
-    //   () => ReactDOMServer.renderToString(
-    //     <BsArrowsAngleExpand size={14} style={{ color: "#9ca3af", marginTop: "5px", marginLeft: "4px" }} />
-    //   ), []
-    // );
+    const expandIconString = useMemo(
+      () => ReactDOMServer.renderToString(
+        <BsArrowsAngleExpand size={14} style={{ color: "#9ca3af", marginTop: "5px", marginLeft: "4px" }} />
+      ), []
+    );
 
     
 
@@ -130,25 +130,12 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
           animations: { enabled: true, speed: 800 },
           toolbar: {
             show: true,
-
-            // 3
             tools: {
-              // FIX 1c — click routes through window.__vizlyOpen(instanceId)
-              // instead of a direct closure, so it is never stale.
-              // customIcons: isModal ? [] : [{
-              //   icon:  expandIconString,
-              //   index: 6,
-              //   title: "Expand",
-              //   class: "custom-icon",
-              //   click: () => (window as any).__vizlyOpen?.(instanceId),
-              // }],
+              customIcons: isModal ? [] : [{
+                icon: expandIconString, index: 6, title: "Expand", class: "custom-icon",
+                click: () => setIsModalOpen(true),
+              }],
             },
-            // tools: {
-            //   customIcons: isModal ? [] : [{
-            //     icon: expandIconString, index: 6, title: "Expand", class: "custom-icon",
-            //     click: () => setIsModalOpen(true),
-            //   }],
-            // },
           },
           ...options.chart,
         },
@@ -231,20 +218,6 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
         >
           <div ref={chartRef} style={{ height: "100%", width: "100%", overflow: "hidden" }} />
 
-          {/* Expand button — visible for ALL chart types */}
-          <button
-            onClick={() => setIsModalOpen(true)}
-            title="Expand"
-            style={{
-              position:            "absolute",
-              top:                 "0px",
-              right:               "0px",
-              width:               "26px",
-              height:              "26px",
-            }}
-          >
-            <BsArrowsAngleExpand size={12} color="#555" />
-          </button>
         </div>
 
         {/* Modal — unchanged from your original */}
