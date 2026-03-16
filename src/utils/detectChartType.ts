@@ -1,34 +1,31 @@
- 
 export const detectChartType = (data: any[]): string => {
   if (!data || !Array.isArray(data) || data.length === 0) return "bar";
  
   const first = data[0];
  
-  // Plain number array → donut slices
   if (typeof first === "number") return "donut";
   if (typeof first !== "object" || first === null) return "bar";
  
-  // ── Range / Financial ──────────────────────────────────────────────────────
+  // 1. Range / Financial
   if (Array.isArray(first.y)) {
     if (first.y.length === 5) return "boxplot";
     if (first.y.length === 4) return "candlestick";
     if (first.y.length === 2) return "rangebar";
   }
-  if (first.open  !== undefined && first.close !== undefined) return "candlestick";
-  if (first.min   !== undefined && first.max   !== undefined) return "boxplot";
-  if (first.start !== undefined && first.end   !== undefined) return "rangebar";
+  if (first.open !== undefined && first.close !== undefined) return "candlestick";
+  if (first.min  !== undefined && first.max   !== undefined) return "boxplot";
+  if (first.start !== undefined && first.end  !== undefined) return "rangebar";
  
-  // ── Specialty ──────────────────────────────────────────────────────────────
-  // FIX: use 'in' operator — avoids false negative when r or z is 0
+  // 2. Specialty
   if ("r" in first || "z" in first) return "bubble";
   if (first.stage !== undefined)    return "funnel";
   if (first.group !== undefined)    return "heatmap";
   if (first.name  !== undefined && first.value !== undefined) return "treemap";
  
-  // ── Circular ───────────────────────────────────────────────────────────────
+  // 3. Circular
   if (first.label !== undefined && first.value !== undefined) return "donut";
  
-  // ── XY / Category ──────────────────────────────────────────────────────────
+  // 4. XY / Category defaults
   if (typeof first.x === "number" && typeof first.y === "number") return "scatter";
   if (typeof first.x === "string" && !isNaN(Date.parse(first.x))) return "line";
  
