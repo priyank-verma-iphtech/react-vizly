@@ -234,8 +234,7 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       <>
       <div
           style={{ height, width: "100%", position: "relative", overflow: "hidden" }}
-          onMouseEnter={() => setBtnVisible(true)}
-          onMouseLeave={() => setBtnVisible(false)}
+          
         >
           <div ref={chartRef} style={{ height: "100%", width: "100%", overflow: "hidden" }} />
 
@@ -249,20 +248,6 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
               right:               "8px",
               width:               "26px",
               height:              "26px",
-              display:             "flex",
-              alignItems:          "center",
-              justifyContent:      "center",
-              background:          "rgba(255,255,255,0.9)",
-              border:              "0.5px solid rgba(0,0,0,0.12)",
-              borderRadius:        "6px",
-              cursor:              "pointer",
-              zIndex:              10,
-              backdropFilter:      "blur(4px)",
-              WebkitBackdropFilter:"blur(4px)",
-              opacity:             btnVisible ? 1 : 0,
-              transform:           btnVisible ? "scale(1)" : "scale(0.82)",
-              transition:          "opacity 0.15s ease, transform 0.15s ease",
-              pointerEvents:       btnVisible ? "auto" : "none",
             }}
           >
             <BsArrowsAngleExpand size={12} color="#555" />
