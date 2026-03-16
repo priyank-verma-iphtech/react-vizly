@@ -1,11 +1,24 @@
-import { default as VizlyChart } from '../node_modules/components/VizlyChart';
-import { VizlyProps } from '../node_modules/components/VizlyChart';
-import { VizlyRef } from '../node_modules/components/VizlyChart';
+import { default as default_2 } from 'react';
 
-export { VizlyChart }
+export declare const VizlyChart: default_2.ForwardRefExoticComponent<VizlyProps & default_2.RefAttributes<VizlyRef>>;
 
-export { VizlyProps }
+export declare interface VizlyProps {
+    data: any[] | any[][];
+    type?: string | string[];
+    options?: any;
+    height?: number | string;
+    title?: string | {
+        text: string;
+        align?: "left" | "center" | "right";
+        style?: any;
+    };
+}
 
-export { VizlyRef }
+export declare interface VizlyRef {
+    zoomIn: () => void;
+    zoomOut: () => void;
+    reset: () => void;
+    toggleFullscreen: () => void;
+}
 
 export { }
