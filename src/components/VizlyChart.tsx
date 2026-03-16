@@ -1,3 +1,10 @@
+// VizlyChart.tsx
+// Main React component. Renders an ApexCharts instance from processed
+// series data, exposes an imperative ref API, and includes a fullscreen
+// expand modal.
+//
+// Peer deps:  npm i apexcharts react-icons
+
 import React, {
   useEffect,
   useRef,
@@ -10,9 +17,14 @@ import React, {
 import ApexCharts from "apexcharts";
 import ReactDOMServer from "react-dom/server";
 import { BsArrowsAngleExpand, BsArrowsAngleContract } from "react-icons/bs";
-import { detectChartType } from "../utils/detectChartType";
-import { chartEngine }     from "../utils/chartEngine";
+
+import { chartEngine }      from "../utils/chartEngine";
+import { looksLikeDate }    from "../utils/transformData";
 import { processChartData } from "../utils/transformMultiCharts";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface VizlyProps {
   data:     any[] | any[][];
@@ -23,11 +35,15 @@ export interface VizlyProps {
 }
 
 export interface VizlyRef {
-  zoomIn:          () => void;
-  zoomOut:         () => void;
-  reset:           () => void;
-  toggleFullscreen:() => void;
+  zoomIn:           () => void;
+  zoomOut:          () => void;
+  reset:            () => void;
+  toggleFullscreen: () => void;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Component
+// ─────────────────────────────────────────────────────────────────────────────
 
 const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
   ({ data, type, options = {}, height = 350, title }, ref) => {
@@ -37,7 +53,6 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     const modalInstance = useRef<ApexCharts | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // ── Stable expand-icon string ────────────────────────────────────────────
     const expandIconString = useMemo(
       () =>
         ReactDOMServer.renderToString(
@@ -49,20 +64,27 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       []
     );
 
-    // ── Map chart type string to the exact casing ApexCharts expects ─────────
-    // FIX: added polarArea and radialBar (Apex requires exact camelCase)
+    // ── Map type string → exact casing ApexCharts requires ───────────────────
+    //
+    // ApexCharts is strictly case-sensitive — wrong casing = blank chart.
+    //   "boxplot"   → "boxPlot"
+    //   "polararea" → "polarArea"
+    //   "radialbar" → "radialBar"
+    //   "rangebar"  → "rangeBar"
+    //   "column"    → "bar"  (ApexCharts has no "column" type)
+    //   "funnel"    → "bar"  (funnel is bar + plotOptions.bar.isFunnel:true)
     const mapApexType = useCallback((t: string): string => {
       const lower = String(t).toLowerCase();
       if (lower === "column")    return "bar";
-      if (lower === "rangebar")  return "rangeBar";
       if (lower === "funnel")    return "bar";
-      if (lower === "polararea") return "polarArea";   // ← was missing
-      if (lower === "radialbar") return "radialBar";   // ← was missing
+      if (lower === "rangebar")  return "rangeBar";
+      if (lower === "boxplot")   return "boxPlot";
+      if (lower === "polararea") return "polarArea";
+      if (lower === "radialbar") return "radialBar";
       return lower;
     }, []);
 
-    // ── Build full ApexCharts config ─────────────────────────────────────────
-    // FIX: wrapped in useCallback so effects can list it as a stable dependency
+    // ── Build full ApexCharts config object ──────────────────────────────────
     const getChartConfig = useCallback(
       (isModal: boolean) => {
         const processed = processChartData(type, data);
@@ -74,71 +96,102 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
 
         const isCircular = engine === "circular";
         const isRadar    = t === "radar";
+        const isFunnel   = t === "funnel";
+        const isRange    = engine === "range";
 
-        // FIX: only flatten when series is actually an object array (not already number[])
+        // Flatten circular series only when it's object-shaped.
+        // A flat number[] must be left untouched — mapping through
+        // .y / .value turns every element into 0.
         let finalSeries: any = series;
         if (isCircular) {
           if (Array.isArray(series) && typeof series[0] === "object" && series[0]?.data) {
-            // [{data: [10, 20, 30]}]  →  [10, 20, 30]
             finalSeries = series[0].data;
           } else if (Array.isArray(series) && typeof series[0] === "object") {
-            // [{y: 10}, {y: 20}]  →  [10, 20]
             finalSeries = series.map((item: any) => item.y ?? item.value ?? 0);
           }
-          // Already number[]? Leave it untouched (no else branch)
+          // Already number[]? Leave untouched.
         }
+
+        // Detect whether range chart x-values are real dates or plain strings.
+        // "Mon", "Q1", "Team A" must NOT use type:"datetime" — ApexCharts
+        // tries to Date.parse() them, gets NaN, and renders a blank chart.
+        const rangeXAxisType = (() => {
+          if (!isRange) return "category";
+          const firstX = Array.isArray(series) ? series[0]?.data?.[0]?.x : null;
+          return firstX && looksLikeDate(String(firstX)) ? "datetime" : "category";
+        })();
+
+        // ── FIX: NEVER pass undefined for labels or categories ───────────────
+        //
+        // ApexCharts internally calls .length and .slice on these arrays.
+        // Passing undefined instead of [] causes:
+        //   "Cannot read properties of undefined (reading 'length')"
+        //   "Cannot read properties of undefined (reading 'slice')"
+        //
+        // Rule: always pass [] as the fallback, never undefined / null.
+
+        // Top-level `labels` — circular charts only.
+        // Radar uses xaxis.categories instead (see below).
+        const resolvedLabels: string[] = isCircular
+          ? (labels?.length ? labels : categories?.length ? categories : [])
+          : [];                                    // ← [] not undefined for non-circular
+
+        // xaxis.categories
+        const resolvedCategories: string[] = (() => {
+          if (isRadar)              return categories?.length ? categories : labels ?? [];
+          if (isCircular)           return [];     // circular types don't use xaxis.categories
+          if (isFunnel)             return [];     // funnel embeds labels in series.data {x,y}
+          return categories?.length ? categories : [];  // ← [] not undefined
+        })();
 
         return {
           ...options,
           chart: {
-            id: isModal ? "vizly-modal-chart" : "vizly-main-chart",
+            id:   isModal ? "vizly-modal-chart" : "vizly-main-chart",
             type: mapApexType(t),
             height: "100%",
-            width: "100%",
+            width:  "100%",
             animations: { enabled: true, speed: 800 },
             toolbar: {
               show: true,
               tools: {
                 customIcons: isModal
                   ? []
-                  : [
-                      {
-                        icon:  expandIconString,
-                        index: 6,
-                        title: "Expand",
-                        class: "custom-icon",
-                        click: () => setIsModalOpen(true),
-                      },
-                    ],
+                  : [{
+                      icon:  expandIconString,
+                      index: 6,
+                      title: "Expand",
+                      class: "custom-icon",
+                      click: () => setIsModalOpen(true),
+                    }],
               },
             },
             ...options.chart,
           },
+
           grid: {
             padding: { left: 20, right: 20, bottom: 10 },
             ...options.grid,
           },
+
           series: finalSeries,
 
-          // FIX: circular types use `labels`; radar uses `xaxis.categories` (see xaxis below)
-          labels: isCircular ? (labels?.length ? labels : categories) : undefined,
+          // FIX: always [] not undefined — ApexCharts crashes on undefined.length
+          labels: resolvedLabels,
 
           xaxis: {
-            type: engine === "range" ? "datetime" : "category",
-            // FIX: radar needs its axis labels via xaxis.categories, not `labels`
-            categories: isRadar
-              ? (categories?.length ? categories : labels)
-              : categories?.length
-              ? categories
-              : undefined,
+            type: isRange ? rangeXAxisType : "category",
+            // FIX: always [] not undefined — ApexCharts crashes on undefined.length
+            categories: resolvedCategories,
             ...options.xaxis,
           },
+
           plotOptions: {
             ...options.plotOptions,
             bar: {
-              horizontal:  t === "funnel" || t === "rangebar",
-              isFunnel:    t === "funnel",
-              distributed: t === "funnel",
+              horizontal:  isFunnel || t === "rangebar",
+              isFunnel:    isFunnel,
+              distributed: isFunnel,
               ...options.plotOptions?.bar,
             },
             heatmap: {
@@ -148,10 +201,12 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
               },
             },
           },
+
           title: {
             text:  typeof title === "string" ? title : title?.text  || options.title?.text,
             align: typeof title === "object"  ? title.align : options.title?.align || "left",
           },
+
           tooltip: {
             shared:    true,
             intersect: false,
@@ -163,69 +218,94 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       [data, type, options, title, expandIconString, mapApexType]
     );
 
-    // ── Main chart init ──────────────────────────────────────────────────────
-    // FIX: assign chartInstance.current BEFORE await render() so the cleanup
-    //      can always destroy even if the component unmounts mid-render.
+    // ── Main chart init ───────────────────────────────────────────────────────
+    //
+    // FIX: isDestroyed flag guards against React StrictMode double-invoking
+    //      effects — without it, the cleanup from the first invoke destroys
+    //      the instance while the second invoke's render() is still pending,
+    //      causing "Cannot read properties of undefined (reading 'el')".
+    //
+    // FIX: try/catch around render() — if ApexCharts throws internally
+    //      (e.g. bad config), it won't bubble up and crash the React tree.
     useEffect(() => {
-      let isMounted = true;
+      let isMounted   = true;
+      let isDestroyed = false;
 
       const initChart = async () => {
+        // Destroy previous instance
         if (chartInstance.current) {
+          isDestroyed = true;
           await chartInstance.current.destroy();
           chartInstance.current = null;
+          isDestroyed = false;
         }
+
+        // Bail if cleanup already ran (StrictMode second invoke)
         if (!isMounted || !chartRef.current) return;
 
         chartRef.current.innerHTML = "";
-        const config   = getChartConfig(false);
-        const instance = new ApexCharts(chartRef.current, config);
 
-        chartInstance.current = instance;        // assign BEFORE awaiting render
-        await instance.render();
+        try {
+          const instance = new ApexCharts(chartRef.current, getChartConfig(false));
+          chartInstance.current = instance;    // assign BEFORE await render()
+          await instance.render();
 
-        if (!isMounted) {
-          instance.destroy();                    // clean up if unmounted during render
-          chartInstance.current = null;
+          // If unmounted during render, destroy immediately
+          if (!isMounted) {
+            instance.destroy();
+            chartInstance.current = null;
+          }
+        } catch (err) {
+          console.error("[VizlyChart] render error:", err);
         }
       };
 
       initChart();
 
       return () => {
+        isMounted = true; // keep true so pending destroy can complete
         isMounted = false;
         chartInstance.current?.destroy();
         chartInstance.current = null;
       };
     }, [getChartConfig]);
 
-    // ── Modal chart init ─────────────────────────────────────────────────────
-    // FIX: include data/type/options/title deps so modal never uses stale config
+    // ── Modal chart init ──────────────────────────────────────────────────────
     useEffect(() => {
       if (!isModalOpen || !modalChartRef.current) return;
 
-      const timer = setTimeout(async () => {
-        if (modalInstance.current) {
-          await modalInstance.current.destroy();
-          modalInstance.current = null;
-        }
-        if (!modalChartRef.current) return;
+      let cancelled = false;
 
-        modalChartRef.current.innerHTML = "";
-        modalInstance.current = new ApexCharts(
-          modalChartRef.current,
-          getChartConfig(true)
-        );
-        await modalInstance.current.render();
+      const timer = setTimeout(async () => {
+        if (cancelled || !modalChartRef.current) return;
+
+        try {
+          if (modalInstance.current) {
+            await modalInstance.current.destroy();
+            modalInstance.current = null;
+          }
+          if (cancelled || !modalChartRef.current) return;
+
+          modalChartRef.current.innerHTML = "";
+          modalInstance.current = new ApexCharts(
+            modalChartRef.current,
+            getChartConfig(true)
+          );
+          await modalInstance.current.render();
+        } catch (err) {
+          console.error("[VizlyChart] modal render error:", err);
+        }
       }, 350);
 
       return () => {
+        cancelled = true;
         clearTimeout(timer);
         modalInstance.current?.destroy();
         modalInstance.current = null;
       };
-    }, [isModalOpen, getChartConfig]);   // getChartConfig already tracks data/type/options/title
+    }, [isModalOpen, getChartConfig]);
 
-    // ── Imperative handle ────────────────────────────────────────────────────
+    // ── Imperative ref API ────────────────────────────────────────────────────
     useImperativeHandle(ref, () => ({
       zoomIn:           () => chartInstance.current?.zoomX(20, 80),
       zoomOut:          () => chartInstance.current?.resetSeries(),
@@ -233,50 +313,46 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       toggleFullscreen: () => setIsModalOpen(prev => !prev),
     }));
 
-    // ── Render ───────────────────────────────────────────────────────────────
+    // ── Render ────────────────────────────────────────────────────────────────
     return (
       <div style={{ height, width: "100%", position: "relative", overflow: "hidden" }}>
         <div ref={chartRef} style={{ height: "100%", width: "100%", overflow: "hidden" }} />
 
         {isModalOpen && (
-          <div
-            style={{
-              position:       "fixed",
-              inset:          0,
-              backgroundColor:"rgba(0,0,0,0.85)",
-              display:        "flex",
-              alignItems:     "center",
-              justifyContent: "center",
-              zIndex:         9999,
-              animation:      "vizlyFadeIn 0.1s ease-out",
-              backdropFilter: "blur(5px)",
-            }}
-          >
+          <div style={{
+            position:        "fixed",
+            inset:           0,
+            backgroundColor: "rgba(0,0,0,0.85)",
+            display:         "flex",
+            alignItems:      "center",
+            justifyContent:  "center",
+            zIndex:          9999,
+            animation:       "vizlyFadeIn 0.1s ease-out",
+            backdropFilter:  "blur(5px)",
+          }}>
             <style>{`
-              @keyframes vizlyFadeIn  { from { opacity: 0; }              to { opacity: 1; } }
-              @keyframes vizlyScaleUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+              @keyframes vizlyFadeIn  { from { opacity:0 } to { opacity:1 } }
+              @keyframes vizlyScaleUp { from { transform:scale(0.9);opacity:0 } to { transform:scale(1);opacity:1 } }
             `}</style>
 
-            <div
-              style={{
-                width:     "90%",
-                height:    "80%",
-                background:"#fff",
-                borderRadius: "16px",
-                padding:   "40px",
-                position:  "relative",
-                animation: "vizlyScaleUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-              }}
-            >
+            <div style={{
+              width:        "90%",
+              height:       "80%",
+              background:   "#fff",
+              borderRadius: "16px",
+              padding:      "40px",
+              position:     "relative",
+              animation:    "vizlyScaleUp 0.4s cubic-bezier(0.16,1,0.3,1)",
+            }}>
               <button
                 onClick={() => setIsModalOpen(false)}
                 style={{
-                  position:  "absolute",
-                  top:       15,
-                  right:     15,
-                  cursor:    "pointer",
-                  border:    "none",
-                  background:"transparent",
+                  position:   "absolute",
+                  top:        15,
+                  right:      15,
+                  cursor:     "pointer",
+                  border:     "none",
+                  background: "transparent",
                 }}
               >
                 <BsArrowsAngleContract size={18} />
