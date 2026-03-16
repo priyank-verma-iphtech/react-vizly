@@ -54,20 +54,13 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       return () => { _handlers.delete(instanceId); };
     }, [instanceId]);
 
-    // FIX 2 — hover state for the React button overlay (see JSX below)
-    const [btnVisible, setBtnVisible] = useState(false);
-
-    const expandIconString = useMemo(
-      () => ReactDOMServer.renderToString(
-        <BsArrowsAngleExpand size={14} style={{ color: "#9ca3af", marginTop: "5px", marginLeft: "4px" }} />
-      ), []
-    );
-
     // const expandIconString = useMemo(
     //   () => ReactDOMServer.renderToString(
-    //       <BsArrowsAngleExpand size={14} style={{ color: "#9ca3af", marginTop: "5px", marginLeft:"4px" }} />
-    //     ), []
+    //     <BsArrowsAngleExpand size={14} style={{ color: "#9ca3af", marginTop: "5px", marginLeft: "4px" }} />
+    //   ), []
     // );
+
+    
 
     const mapApexType = (t: string) => {
       const typeStr = String(t).toLowerCase();
@@ -142,13 +135,13 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
             tools: {
               // FIX 1c — click routes through window.__vizlyOpen(instanceId)
               // instead of a direct closure, so it is never stale.
-              customIcons: isModal ? [] : [{
-                icon:  expandIconString,
-                index: 6,
-                title: "Expand",
-                class: "custom-icon",
-                click: () => (window as any).__vizlyOpen?.(instanceId),
-              }],
+              // customIcons: isModal ? [] : [{
+              //   icon:  expandIconString,
+              //   index: 6,
+              //   title: "Expand",
+              //   class: "custom-icon",
+              //   click: () => (window as any).__vizlyOpen?.(instanceId),
+              // }],
             },
             // tools: {
             //   customIcons: isModal ? [] : [{
@@ -244,8 +237,8 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
             title="Expand"
             style={{
               position:            "absolute",
-              top:                 "8px",
-              right:               "8px",
+              top:                 "5px",
+              right:               "5px",
               width:               "26px",
               height:              "26px",
             }}
