@@ -416,8 +416,8 @@ const Ce = oe(
                 title: "Expand",
                 style: {
                   position: "absolute",
-                  top: "5px",
-                  right: "5px",
+                  top: "0px",
+                  right: "0px",
                   width: "26px",
                   height: "26px"
                 },
