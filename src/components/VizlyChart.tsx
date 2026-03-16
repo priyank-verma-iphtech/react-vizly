@@ -9,9 +9,16 @@ import React, {
 import ApexCharts from "apexcharts";
 import ReactDOMServer from "react-dom/server";
 import { BsArrowsAngleExpand, BsArrowsAngleContract } from "react-icons/bs";
-import { detectChartType } from "../utils/detectChartType";
 import { chartEngine } from "../utils/chartEngine";
 import { processChartData } from "../utils/transformMultiCharts";
+import { looksLikeDate } from "../utils/transformData";
+
+// 1
+const _handlers = new Map<string, () => void>();
+if (typeof window !== "undefined") {
+  (window as any).__vizlyOpen = (id: string) => _handlers.get(id)?.();
+}
+let _counter = 0;
 
 export interface VizlyProps {
   data: any[] | any[][];
@@ -38,17 +45,39 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     const modalInstance = useRef<ApexCharts | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
+    // 2
+    const instanceId = useMemo(() => `vizly-${++_counter}`, []);
+
+    // FIX 1b — keep registry fresh every render so handler is never stale
+    useEffect(() => {
+      _handlers.set(instanceId, () => setIsModalOpen(true));
+      return () => { _handlers.delete(instanceId); };
+    }, [instanceId]);
+
+    // FIX 2 — hover state for the React button overlay (see JSX below)
+    const [btnVisible, setBtnVisible] = useState(false);
+
     const expandIconString = useMemo(
       () => ReactDOMServer.renderToString(
-          <BsArrowsAngleExpand size={14} style={{ color: "#9ca3af", marginTop: "5px", marginLeft:"4px" }} />
-        ), []
+        <BsArrowsAngleExpand size={14} style={{ color: "#9ca3af", marginTop: "5px", marginLeft: "4px" }} />
+      ), []
     );
+
+    // const expandIconString = useMemo(
+    //   () => ReactDOMServer.renderToString(
+    //       <BsArrowsAngleExpand size={14} style={{ color: "#9ca3af", marginTop: "5px", marginLeft:"4px" }} />
+    //     ), []
+    // );
 
     const mapApexType = (t: string) => {
       const typeStr = String(t).toLowerCase();
-      if (typeStr === "column") return "bar";
-      if (typeStr === "rangebar") return "rangeBar";
-      if (typeStr === "funnel") return "bar";
+      if (typeStr === "column")    return "bar";
+      if (typeStr === "funnel")    return "bar";
+      if (typeStr === "rangebar")  return "rangeBar";
+      if (typeStr === "boxplot")   return "boxPlot";   // ← FIX: was missing
+      if (typeStr === "polararea") return "polarArea"; // ← FIX: was missing
+      if (typeStr === "radialbar") return "radialBar";
+
       return typeStr as any;
     };
 
@@ -63,6 +92,8 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       const isCircular = engine === "circular";
       const isRadar = t === "radar";
       
+      const isFunnel = t === "funnel";
+      const isRange  = engine === "range";
       // FIX: Ensure Pie/Donut get flat arrays, while XY/Bar get Object arrays
       let finalSeries: any = series;
       if (isCircular) {
@@ -74,6 +105,28 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
         }
       }
 
+      const resolvedLabels: string[] = isCircular
+        ? (labels?.length ? labels : categories?.length ? categories : [])
+        : [];
+
+      const resolvedCategories: string[] = (() => {
+        if (isRadar)    return categories?.length ? categories : labels ?? [];
+        if (isCircular) return [];
+        if (isFunnel)   return [];
+        return categories?.length ? categories : [];
+      })();
+
+      // ── FIX 4: xaxis.type for range charts ────────────────────────────────
+      // Your original always used "datetime" for range engine charts.
+      // When x values are plain strings ("Mon", "Q1", "Team A"), ApexCharts
+      // tries to Date.parse() them → gets null yRatio → crash.
+      // Only use "datetime" when x values are actual date strings.
+      const rangeXAxisType = (() => {
+        if (!isRange) return "category";
+        const firstX = Array.isArray(series) ? series[0]?.data?.[0]?.x : null;
+        return firstX && looksLikeDate(String(firstX)) ? "datetime" : "category";
+      })();
+
       return {
         ...options,
         chart: {
@@ -84,12 +137,25 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
           animations: { enabled: true, speed: 800 },
           toolbar: {
             show: true,
+
+            // 3
             tools: {
+              // FIX 1c — click routes through window.__vizlyOpen(instanceId)
+              // instead of a direct closure, so it is never stale.
               customIcons: isModal ? [] : [{
-                icon: expandIconString, index: 6, title: "Expand", class: "custom-icon",
-                click: () => setIsModalOpen(true),
+                icon:  expandIconString,
+                index: 6,
+                title: "Expand",
+                class: "custom-icon",
+                click: () => (window as any).__vizlyOpen?.(instanceId),
               }],
             },
+            // tools: {
+            //   customIcons: isModal ? [] : [{
+            //     icon: expandIconString, index: 6, title: "Expand", class: "custom-icon",
+            //     click: () => setIsModalOpen(true),
+            //   }],
+            // },
           },
           ...options.chart,
         },
@@ -98,10 +164,10 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
           ...options.grid
         },
         series: finalSeries,
-        labels: (isCircular || isRadar) ? (labels?.length ? labels : categories) : undefined,
+        labels: resolvedLabels,     // always [], never undefined
         xaxis: {
-          type: engine === "range" ? "datetime" : "category",
-          categories: categories?.length ? categories : undefined,
+          type: isRange ? rangeXAxisType : "category",  // ← uses what you computed above
+          categories: resolvedCategories,
           ...options.xaxis,
         },
         plotOptions: {
@@ -165,33 +231,101 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     }));
 
     return (
-      <div style={{ height, width: "100%", position: "relative", overflow: "hidden" }}>
-        <div ref={chartRef} style={{ height: "100%", width: "100%", overflow: "hidden" }} />
+      <>
+      <div
+          style={{ height, width: "100%", position: "relative", overflow: "hidden" }}
+          onMouseEnter={() => setBtnVisible(true)}
+          onMouseLeave={() => setBtnVisible(false)}
+        >
+          <div ref={chartRef} style={{ height: "100%", width: "100%", overflow: "hidden" }} />
+
+          {/* Expand button — visible for ALL chart types */}
+          <button
+            onClick={() => setIsModalOpen(true)}
+            title="Expand"
+            style={{
+              position:            "absolute",
+              top:                 "8px",
+              right:               "8px",
+              width:               "26px",
+              height:              "26px",
+              display:             "flex",
+              alignItems:          "center",
+              justifyContent:      "center",
+              background:          "rgba(255,255,255,0.9)",
+              border:              "0.5px solid rgba(0,0,0,0.12)",
+              borderRadius:        "6px",
+              cursor:              "pointer",
+              zIndex:              10,
+              backdropFilter:      "blur(4px)",
+              WebkitBackdropFilter:"blur(4px)",
+              opacity:             btnVisible ? 1 : 0,
+              transform:           btnVisible ? "scale(1)" : "scale(0.82)",
+              transition:          "opacity 0.15s ease, transform 0.15s ease",
+              pointerEvents:       btnVisible ? "auto" : "none",
+            }}
+          >
+            <BsArrowsAngleExpand size={12} color="#555" />
+          </button>
+        </div>
+
+        {/* Modal — unchanged from your original */}
         {isModalOpen && (
-           <div style={{
+          <div style={{
             position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)",
             display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
-            animation: "vizlyFadeIn 0.1s ease-out", backdropFilter: "blur(5px)"
+            animation: "vizlyFadeIn 0.1s ease-out", backdropFilter: "blur(5px)",
           }}>
             <style>{`
-              @keyframes vizlyFadeIn { from { opacity: 0; } to { opacity: 1; } }
+              @keyframes vizlyFadeIn  { from { opacity: 0; } to { opacity: 1; } }
               @keyframes vizlyScaleUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
             `}</style>
             <div style={{
               width: "90%", height: "80%", background: "#fff", borderRadius: "16px",
               padding: "40px", position: "relative",
-              animation: "vizlyScaleUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)" 
+              animation: "vizlyScaleUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
             }}>
-              <button onClick={() => setIsModalOpen(false)} style={{ position: "absolute", top: 15, right: 15, cursor: "pointer", border: 'none', background: 'transparent' }}>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                style={{ position: "absolute", top: 15, right: 15, cursor: "pointer", border: "none", background: "transparent" }}
+              >
                 <BsArrowsAngleContract size={18} />
               </button>
               <div ref={modalChartRef} style={{ height: "100%", width: "100%" }} />
             </div>
           </div>
         )}
-      </div>
+      </>
+
+     
     );
   }
 );
 
 export default VizlyChart;
+
+ // <div style={{ height, width: "100%", position: "relative", overflow: "hidden" }}>
+      //   <div ref={chartRef} style={{ height: "100%", width: "100%", overflow: "hidden" }} />
+      //   {isModalOpen && (
+      //      <div style={{
+      //       position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)",
+      //       display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
+      //       animation: "vizlyFadeIn 0.1s ease-out", backdropFilter: "blur(5px)"
+      //     }}>
+      //       <style>{`
+      //         @keyframes vizlyFadeIn { from { opacity: 0; } to { opacity: 1; } }
+      //         @keyframes vizlyScaleUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      //       `}</style>
+      //       <div style={{
+      //         width: "90%", height: "80%", background: "#fff", borderRadius: "16px",
+      //         padding: "40px", position: "relative",
+      //         animation: "vizlyScaleUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)" 
+      //       }}>
+      //         <button onClick={() => setIsModalOpen(false)} style={{ position: "absolute", top: 15, right: 15, cursor: "pointer", border: 'none', background: 'transparent' }}>
+      //           <BsArrowsAngleContract size={18} />
+      //         </button>
+      //         <div ref={modalChartRef} style={{ height: "100%", width: "100%" }} />
+      //       </div>
+      //     </div>
+      //   )}
+      //</div>
