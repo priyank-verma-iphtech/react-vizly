@@ -73,6 +73,17 @@ const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
       if (typeStr === "boxplot")   return "boxPlot";   // ← FIX: was missing
       if (typeStr === "polararea") return "polarArea"; // ← FIX: was missing
       if (typeStr === "radialbar") return "radialBar";
+      if (typeStr === "waterfall")   return "bar";
+      if (typeStr === "histogram")   return "bar";
+      if (typeStr === "pyramid")     return "bar";
+      if (typeStr === "conefunnel")  return "bar";
+      if (typeStr === "funnel")      return "bar";
+      if (typeStr === "gauge")       return "radialBar";
+      if (typeStr === "nightingale") return "polarArea";
+      if (typeStr === "sunburst")    return "treemap";
+      if (typeStr === "sankey")      return "bar";
+      if (typeStr === "calendar")    return "heatmap";
+      if (typeStr === "timeline")    return "rangeBar";
 
       return typeStr as any;
     };
@@ -80,23 +91,26 @@ const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
     const getChartConfig = (isModal: boolean) => {
       const processed = processChartData(type, data);
       if (!processed || processed.length === 0) return { series: [] };
-
       const { type: dType, series, labels, categories } = processed[0];
       const t = String(dType).toLowerCase();
       const engine = chartEngine[t] || "xy";
-
       const isCircular = engine === "circular";
       const isRadar = t === "radar";
-      
-      const isFunnel = t === "funnel";
+      const isFunnel = t === "funnel" || t === "conefunnel";
+      const isPyramid    = t === "pyramid";
       const isRange  = engine === "range";
+      const isGauge      = t === "gauge";
+      const isWaterfall  = t === "waterfall";
+      const isHistogram  = t === "histogram";
+      const isCalendar   = t === "calendar";
+
+
       // FIX: Ensure Pie/Donut get flat arrays, while XY/Bar get Object arrays
       let finalSeries: any = series;
-      if (isCircular) {
-        // If series is [{data: [10, 20]}], flatten it to [10, 20]
-        if (Array.isArray(series) && series[0]?.data) {
+      if (isCircular || isGauge) {
+        if (Array.isArray(series) && typeof series[0] === "object" && series[0]?.data) {
           finalSeries = series[0].data;
-        } else if (Array.isArray(series) && typeof series[0] === 'object') {
+        } else if (Array.isArray(series) && typeof series[0] === "object") {
           finalSeries = series.map((item: any) => item.y ?? item.value ?? 0);
         }
       }
@@ -112,11 +126,6 @@ const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
         return categories?.length ? categories : [];
       })();
 
-      // ── FIX 4: xaxis.type for range charts ────────────────────────────────
-      // Your original always used "datetime" for range engine charts.
-      // When x values are plain strings ("Mon", "Q1", "Team A"), ApexCharts
-      // tries to Date.parse() them → gets null yRatio → crash.
-      // Only use "datetime" when x values are actual date strings.
       const rangeXAxisType = (() => {
         if (!isRange) return "category";
         const firstX = Array.isArray(series) ? series[0]?.data?.[0]?.x : null;
@@ -156,11 +165,37 @@ const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
         plotOptions: {
           ...options.plotOptions,
           bar: {
-            horizontal: t === "funnel" || t === "rangebar",
-            isFunnel: t === "funnel",
-            distributed: t === "funnel",
+            horizontal:  isFunnel || t === "rangebar" || t === "timeline" || isPyramid,
+            isFunnel:    isFunnel || t === "conefunnel",
+            distributed: isFunnel || t === "conefunnel" || isWaterfall,
+            isFunnelPlot: t === "conefunnel", 
             ...options.plotOptions?.bar,
+            ...(isWaterfall && !options.plotOptions?.bar?.colors ? {
+              colors: {
+                ranges: [
+                  { from: -Infinity, to: -0.001, color: "#f43f5e" },  // negative red
+                  { from: 0,         to: Infinity, color: "#10b981" }, // positive green
+                ],
+              },
+            } : {}),
           },
+          radialBar: isGauge ? {
+            startAngle: -135,
+            endAngle:    135,
+            hollow:      { size: "60%" },
+            dataLabels: {
+              name:  { show: true, offsetY: -10 },
+              value: {
+                show:       true,
+                fontSize:   "24px",
+                fontWeight: 600,
+                formatter:  (val: number) => `${val}%`,
+              },
+            },
+            track: { background: "#e5e7eb", strokeWidth: "100%" },
+            ...options.plotOptions?.radialBar,
+          } : options.plotOptions?.radialBar,
+
           heatmap: {
             enableShades: true,
             colorScale: { ranges: options.plotOptions?.heatmap?.colorScale?.ranges || [] }
@@ -313,28 +348,4 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
 
 export default VizlyChart;
 
- // <div style={{ height, width: "100%", position: "relative", overflow: "hidden" }}>
-      //   <div ref={chartRef} style={{ height: "100%", width: "100%", overflow: "hidden" }} />
-      //   {isModalOpen && (
-      //      <div style={{
-      //       position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)",
-      //       display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
-      //       animation: "vizlyFadeIn 0.1s ease-out", backdropFilter: "blur(5px)"
-      //     }}>
-      //       <style>{`
-      //         @keyframes vizlyFadeIn { from { opacity: 0; } to { opacity: 1; } }
-      //         @keyframes vizlyScaleUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-      //       `}</style>
-      //       <div style={{
-      //         width: "90%", height: "80%", background: "#fff", borderRadius: "16px",
-      //         padding: "40px", position: "relative",
-      //         animation: "vizlyScaleUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)" 
-      //       }}>
-      //         <button onClick={() => setIsModalOpen(false)} style={{ position: "absolute", top: 15, right: 15, cursor: "pointer", border: 'none', background: 'transparent' }}>
-      //           <BsArrowsAngleContract size={18} />
-      //         </button>
-      //         <div ref={modalChartRef} style={{ height: "100%", width: "100%" }} />
-      //       </div>
-      //     </div>
-      //   )}
-      //</div>
+ 

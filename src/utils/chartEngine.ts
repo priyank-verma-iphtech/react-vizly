@@ -8,11 +8,18 @@ export const chartEngine: Record<string, string> = {
   column:      "category",
   radar:       "category",
   funnel:      "category",
+  waterfall:   "category",   
+  histogram:   "histogram",  
+  pyramid:     "pyramid",  
+  conefunnel:  "funnel", 
  
   pie:         "circular",
   donut:       "circular",
   radialbar:   "circular",
   polararea:   "circular",
+  gauge:       "gauge",      
+  nightingale: "circular",  
+  sunburst:    "sunburst",
  
   rangebar:    "range",
   candlestick: "range",
@@ -20,5 +27,7 @@ export const chartEngine: Record<string, string> = {
  
   heatmap:     "heatmap",
   treemap:     "treemap",
+  sankey:      "sankey",    
+  calendar:    "calendar",
 };
  

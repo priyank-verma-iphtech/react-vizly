@@ -49,6 +49,129 @@ const VizlyRecharts: React.FC<VizlyRechartsProps> = ({
   const datasets: any[][] = isMulti ? (data as any[][]) : [data as any[]];
 
   // ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+  // GAUGE (Implemented as a PieChart with a needle/specific start angle)
+  // ─────────────────────────────────────────────────────────────────────────
+  if (t === "gauge") {
+    const val = Number(datasets[0][0]?.value ?? datasets[0][0] ?? 0);
+    const gaugeData = [
+      { value: val, fill: colors[0] },
+      { value: 100 - val, fill: "#e5e7eb" },
+    ];
+    return (
+      <div style={{ width: "100%", height }}>
+        {titleText && <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 500 }}>{titleText}</p>}
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={gaugeData}
+              dataKey="value"
+              cx="50%" cy="80%"
+              startAngle={180} endAngle={0}
+              innerRadius="60%" outerRadius="80%"
+              stroke="none"
+            />
+            <Tooltip />
+          </PieChart>
+        </ResponsiveContainer>
+        <div style={{ textAlign: 'center', marginTop: '-40px', fontSize: '24px', fontWeight: 'bold' }}>{val}%</div>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PYRAMID / FUNNEL (Horizontal centered BarChart)
+  // ─────────────────────────────────────────────────────────────────────────
+  if (t === "pyramid") {
+    const rawData = datasets[0][0]?.data || datasets[0];
+    const maxVal = Math.max(...rawData.map((d: any) => d.y ?? 0));
+    
+    // We create a "spacer" bar to center the pyramid
+    const pyramidData = rawData.map((d: any) => ({
+      name: d.x,
+      value: d.y,
+      spacer: (maxVal - (d.y ?? 0)) / 2
+    }));
+
+    return (
+      <div style={{ width: "100%", height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={pyramidData} layout="vertical" stackOffset="none">
+            <XAxis type="number" hide />
+            <YAxis dataKey="name" type="category" />
+            <Tooltip />
+            <Bar dataKey="spacer" stackId="a" fill="transparent" isAnimationActive={false} />
+            <Bar dataKey="value" stackId="a" fill={colors[0]}>
+               {pyramidData.map((_: any, i: number) => (
+                <Cell key={i} fill={colors[i % colors.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // WATERFALL
+  // ─────────────────────────────────────────────────────────────────────────
+  if (t === "waterfall") {
+    const rawData = datasets[0];
+    let currentTotal = 0;
+    const waterfallData = rawData.map((d: any, i: number) => {
+      const val = Number(d.value ?? d.y ?? 0);
+      const isTotal = i === rawData.length - 1;
+      const start = currentTotal;
+      if (!isTotal) currentTotal += val;
+
+      return {
+        name: d.x ?? d.label,
+        display: isTotal ? [0, currentTotal] : [start, start + val],
+        fill: isTotal ? colors[1] : val >= 0 ? colors[0] : "#ef4444"
+      };
+    });
+
+    return (
+      <div style={{ width: "100%", height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={waterfallData}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="display">
+              {waterfallData.map((entry: any, i: number) => (
+                <Cell key={i} fill={entry.fill} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // HISTOGRAM
+  // ─────────────────────────────────────────────────────────────────────────
+  if (t === "histogram") {
+    const chartData = datasets[0][0]?.data || datasets[0];
+    return (
+      <div style={{ width: "100%", height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} barCategoryGap={0}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="x" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="y" fill={colors[0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
+
+
+
   // PIE / DONUT
   // ─────────────────────────────────────────────────────────────────────────
   if (t === "pie" || t === "donut") {
