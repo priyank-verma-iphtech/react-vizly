@@ -69,7 +69,6 @@ const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
     const mapApexType = (t: string) => {
       const typeStr = String(t).toLowerCase();
       if (typeStr === "column")    return "bar";
-      if (typeStr === "funnel")    return "bar";
       if (typeStr === "rangebar")  return "rangeBar";
       if (typeStr === "boxplot")   return "boxPlot";   // ← FIX: was missing
       if (typeStr === "polararea") return "polarArea"; // ← FIX: was missing
@@ -78,6 +77,7 @@ const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
       if (typeStr === "histogram")   return "bar";
       if (typeStr === "pyramid")     return "bar";
       if (typeStr === "conefunnel")  return "bar";
+      if (typeStr === "funnel")    return "bar";
       if (typeStr === "gauge")       return "radialBar";
       if (typeStr === "nightingale") return "polarArea";
       if (typeStr === "sunburst")    return "treemap";
@@ -94,27 +94,47 @@ const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
       const { type: dType, series, labels, categories } = processed[0];
       const t = String(dType).toLowerCase();
       const engine = chartEngine[t] || "xy";
-      const isCircular = engine === "circular";
-      const isRadar = t === "radar";
-      const isFunnel = t === "funnel" || t === "conefunnel";
+    
+      const isCircular   = engine === "circular";
+      const isRadialBar  = t === "radialbar";
+      const isPolarArea  = t === "polararea" || t === "nightingale";
+      const isRadar      = t === "radar";
+      const isFunnel     = t === "funnel" || t === "conefunnel";
       const isPyramid    = t === "pyramid";
-      const isRange  = engine === "range";
+      const isRange      = engine === "range";
       const isGauge      = t === "gauge";
       const isWaterfall  = t === "waterfall";
-      const isHistogram  = t === "histogram";
       const isCalendar   = t === "calendar";
-
-
-      // FIX: Ensure Pie/Donut get flat arrays, while XY/Bar get Object arrays
+      const isCandlestick = t === "candlestick";
+      const isBoxPlot    = t === "boxplot";
+    
+      // ── Unwrap series based on chart type ─────────────────────────────────
       let finalSeries: any = series;
-      if (isCircular) {
-        if (Array.isArray(series) && typeof series[0] === "object" && series[0]?.data) {
-          finalSeries = series[0].data;
-        } else if (Array.isArray(series) && typeof series[0] === "object") {
-          finalSeries = series.map((item: any) => item.y ?? item.value ?? 0);
+    
+      // Circular (pie, donut, polarArea, nightingale) need flat number array
+      if (isCircular || isPolarArea) {
+        if (Array.isArray(series) && series.length > 0) {
+          if (typeof series[0] === "object" && series[0]?.data) {
+            finalSeries = series[0].data;
+          } else if (typeof series[0] === "object" && !Array.isArray(series[0])) {
+            finalSeries = series.map((item: any) => Number(item.y ?? item.value ?? 0));
+          }
+          // else already flat numbers — leave as-is
         }
       }
-
+    
+      // RadialBar needs flat number array + labels from the labels[]
+      if (isRadialBar) {
+        if (Array.isArray(series) && series.length > 0) {
+          if (typeof series[0] === "object" && series[0]?.data) {
+            finalSeries = series[0].data;
+          } else if (typeof series[0] === "object" && !Array.isArray(series[0])) {
+            finalSeries = series.map((item: any) => Number(item.y ?? item.value ?? 0));
+          }
+        }
+      }
+    
+      // Gauge — clamp to 0-100
       if (isGauge) {
         finalSeries = (Array.isArray(finalSeries) ? finalSeries : [finalSeries])
           .map((v: any) => {
@@ -122,31 +142,56 @@ const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
             return isNaN(n) ? 0 : Math.min(100, Math.max(0, n));
           });
       }
-
-      const resolvedLabels: string[] = isCircular
+    
+      // Radar — needs {x, y} objects but category engine gives plain numbers
+      // Re-map to {x: category, y: value} format
+      if (isRadar && Array.isArray(series) && series.length > 0) {
+        const s0 = series[0];
+        if (s0?.data && Array.isArray(s0.data) && typeof s0.data[0] === "number") {
+          finalSeries = [{
+            name: s0.name ?? "Series 1",
+            data: s0.data.map((val: number, i: number) => ({
+              x: categories[i] ?? labels[i] ?? `Item ${i + 1}`,
+              y: val,
+            })),
+          }];
+        }
+      }
+    
+      // ── Resolved labels and categories ────────────────────────────────────
+      const resolvedLabels: string[] = (isCircular || isRadialBar || isPolarArea)
         ? (labels?.length ? labels : categories?.length ? categories : [])
         : [];
-
+    
       const resolvedCategories: string[] = (() => {
-        if (isRadar)    return categories?.length ? categories : labels ?? [];
-        if (isCircular) return [];
-        if (isFunnel)   return [];
-        return categories?.length ? categories : [];
+        if (isRadar)              return []; // radar uses {x,y} data, not categories
+        if (isCircular)           return [];
+        if (isPolarArea)          return [];
+        if (isRadialBar)          return [];
+        if (isFunnel)             return [];
+        if (isRange)              return [];
+        return categories?.length ? categories : labels?.length ? labels : [];
       })();
-
-      const rangeXAxisType = (() => {
-        if (!isRange) return "category";
-        const firstX = Array.isArray(series) ? series[0]?.data?.[0]?.x : null;
-        return firstX && looksLikeDate(String(firstX)) ? "datetime" : "category";
+    
+      // ── X-axis type ───────────────────────────────────────────────────────
+      const xAxisType = (() => {
+        if (isCandlestick)        return "datetime";
+        if (isRange && !isBoxPlot) {
+          const firstX = Array.isArray(series) ? series[0]?.data?.[0]?.x : null;
+          return firstX && looksLikeDate(String(firstX)) ? "datetime" : "numeric";
+        }
+        return "category";
       })();
-
+    
       return {
         ...options,
         chart: {
           id: isModal ? "vizly-modal-chart" : "vizly-main-chart",
           type: mapApexType(t),
           height: "100%",
-          width: "100%", // Fix: Containment
+          width: "100%",
+          stacked: options.stacked ?? false,
+          stackType: options.stackType ?? "normal",
           animations: { enabled: true, speed: 800 },
           toolbar: {
             show: true,
@@ -160,62 +205,68 @@ const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
           ...options.chart,
         },
         grid: {
-          padding: { left: 20, right: 20, bottom: 10 }, // Fix: X-axis bleed
-          ...options.grid
+          padding: { left: 20, right: 20, bottom: 10 },
+          ...options.grid,
         },
         series: finalSeries,
-        labels: resolvedLabels,     // always [], never undefined
+        labels: resolvedLabels,
         xaxis: {
-          type: isRange ? rangeXAxisType : "category",  // ← uses what you computed above
+          type: xAxisType,
           categories: resolvedCategories,
           ...options.xaxis,
         },
         plotOptions: {
           ...options.plotOptions,
           bar: {
-            horizontal:  isFunnel || t === "rangebar" || t === "timeline" || isPyramid,
-            isFunnel:    isFunnel || t === "conefunnel",
-            distributed: isFunnel || t === "conefunnel" || isWaterfall,
-            isFunnelPlot: t === "conefunnel", 
+            horizontal:   isFunnel || t === "rangebar" || t === "timeline" || isPyramid,
+            isFunnel:     isFunnel || t === "conefunnel",
+            distributed:  isFunnel || t === "conefunnel" || isWaterfall,
+            isFunnelPlot: t === "conefunnel",
             ...options.plotOptions?.bar,
             ...(isWaterfall && !options.plotOptions?.bar?.colors ? {
               colors: {
                 ranges: [
-                  { from: -Infinity, to: -0.001, color: "#f43f5e" },  // negative red
-                  { from: 0,         to: Infinity, color: "#10b981" }, // positive green
+                  { from: -Infinity, to: -0.001, color: "#f43f5e" },
+                  { from: 0, to: Infinity,        color: "#10b981" },
                 ],
               },
             } : {}),
           },
           radialBar: isGauge ? {
             startAngle: -135,
-            endAngle:    135,
-            hollow:      { size: "60%" },
+            endAngle: 135,
+            hollow: { size: "60%" },
             dataLabels: {
               name:  { show: true, offsetY: -10 },
               value: {
-                show:       true,
-                fontSize:   "24px",
-                fontWeight: 600,
-                formatter:  (val: number) => `${val}%`,
+                show: true, fontSize: "24px", fontWeight: 600,
+                formatter: (val: number) => `${val}%`,
               },
             },
             track: { background: "#e5e7eb", strokeWidth: "100%" },
             ...options.plotOptions?.radialBar,
-          } : options.plotOptions?.radialBar,
-
+          } : {
+            // Non-gauge radialBar
+            hollow: { size: "30%" },
+            dataLabels: {
+              name:  { show: true },
+              value: { show: true },
+              total: { show: true, label: "Total" },
+            },
+            ...options.plotOptions?.radialBar,
+          },
           heatmap: {
             enableShades: true,
-            colorScale: { ranges: options.plotOptions?.heatmap?.colorScale?.ranges || [] }
-          }
+            colorScale: { ranges: options.plotOptions?.heatmap?.colorScale?.ranges || [] },
+          },
         },
         title: {
-          text: typeof title === "string" ? title : title?.text || options.title?.text,
+          text: (typeof title === "string" ? title : title?.text ?? options.title?.text) ?? "",
           align: typeof title === "object" ? title.align : options.title?.align || "left",
         },
         tooltip: {
-          shared: true,
-          intersect: false,
+          shared:    !isRange && !isBoxPlot,
+          intersect: isRange || isBoxPlot,
           theme: "dark",
           ...options.tooltip,
         },

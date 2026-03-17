@@ -6,7 +6,7 @@ export const chartEngine: Record<string, string> = {
  
   bar:         "category",
   column:      "category",
-  radar:       "category",
+  radar:       "radar",
   funnel:      "funnel",
   waterfall:   "waterfall",   
   histogram:   "histogram",  

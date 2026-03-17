@@ -95,6 +95,16 @@ export const transformData = (type: string, data: any[]) => {
       }];
       break;
     }
+    case "radar": {
+      series = [{
+        name: "Series 1",
+        data: data.map(d => ({
+          x: String(d.x ?? d.category ?? d[fallbackCat]),
+          y: Number(d.value ?? d.y ?? d[numericKeys[0]] ?? 0),
+        })),
+      }];
+      break;
+    }
 
     case "histogram": {
       const isPreBinned = first.bin !== undefined || first.count !== undefined;
