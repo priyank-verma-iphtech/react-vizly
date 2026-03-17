@@ -12,6 +12,8 @@ import { BsArrowsAngleExpand, BsArrowsAngleContract } from "react-icons/bs";
 import { chartEngine } from "../utils/chartEngine";
 import { processChartData } from "../utils/transformMultiCharts";
 import { looksLikeDate } from "../utils/transformData";
+import VizlyRecharts from "./VizlyRecharts";
+import VizlyECharts  from "./VizlyEcharts";
 
 // 1
 const _handlers = new Map<string, () => void>();
@@ -26,6 +28,7 @@ export interface VizlyProps {
   options?: any;
   height?: number | string;
   title?: string | { text: string; align?: "left" | "center" | "right"; style?: any };
+  renderer?: "apexcharts" | "recharts" | "plotychart" | "echarts" | "chartjs";
 }
 
 export interface VizlyRef {
@@ -36,9 +39,9 @@ export interface VizlyRef {
 }
 
 
-
-const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
+const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
   ({ data, type, options = {}, height = 350, title }, ref) => {
+
     const chartRef = useRef<HTMLDivElement>(null);
     const modalChartRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<ApexCharts | null>(null);
@@ -252,6 +255,61 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
     );
   }
 );
+const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
+  ({ data, type, options = {}, height = 350, title, renderer = "apexcharts"}, ref) => {
+
+    if (renderer === "recharts") {
+      return (
+        <VizlyRecharts
+          data={data}
+          type={type}
+          options={options}
+          height={height}
+          title={title}
+        />
+      );
+    }
+
+    if (renderer === "echarts") {
+      return (
+        <VizlyECharts
+          data={data}
+          type={type}
+          options={options}
+          height={height}
+          title={title}
+        />
+      );
+    }
+
+    if (renderer === "plotychart") {
+      return (
+        <VizlyECharts
+          data={data}
+          type={type}
+          options={options}
+          height={height}
+          title={title}
+        />
+      );
+    }
+
+    // ── DEFAULT: ApexCharts renderer (all existing code unchanged below) ───
+    return (
+      <ApexRenderer
+        data={data}
+        type={type}
+        options={options}
+        height={height}
+        title={title}
+        ref={ref}
+      />
+    );
+  }
+);
+
+
+
 
 export default VizlyChart;
 
