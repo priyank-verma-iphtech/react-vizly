@@ -93,7 +93,7 @@ const VizlyECharts: React.FC<VizlyEChartsProps> = ({
     }} style={{ height: typeof height === "number" ? `${height}px` : height, width: "100%" }} opts={{ renderer: "svg" }} />;
   }
 
-  // ── SUNBURST ─────────────────────────────────────────────────────────────────
+  // ── SUNBURST ───────────────────────────────────────────────────────────────
   if (t === "sunburst") {
     const toEChartsTree = (nodes: any[]): any[] =>
       nodes.map(n => ({

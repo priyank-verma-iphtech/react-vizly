@@ -53,13 +53,16 @@ const VizlyRecharts: React.FC<VizlyRechartsProps> = ({
   // GAUGE (Implemented as a PieChart with a needle/specific start angle)
   // ─────────────────────────────────────────────────────────────────────────
   if (t === "gauge") {
-    const val = Number(datasets[0][0]?.value ?? datasets[0][0] ?? 0);
+    const raw = datasets[0][0];
+    const val = Number(
+    typeof raw === "number" ? raw : (raw?.value ?? raw?.y ?? raw ?? 0)
+    );
     const gaugeData = [
       { value: val, fill: colors[0] },
       { value: 100 - val, fill: "#e5e7eb" },
     ];
     return (
-      <div style={{ width: "100%", height }}>
+      <div style={{ width: "100%", height: typeof height === "number" ? `${height}px` : height }}>
         {titleText && <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 500 }}>{titleText}</p>}
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -70,7 +73,11 @@ const VizlyRecharts: React.FC<VizlyRechartsProps> = ({
               startAngle={180} endAngle={0}
               innerRadius="60%" outerRadius="80%"
               stroke="none"
-            />
+            >
+            {gaugeData.map((entry, i) => (
+             <Cell key={i} fill={entry.fill} />
+             ))}
+            </Pie>
             <Tooltip />
           </PieChart>
         </ResponsiveContainer>
@@ -94,7 +101,7 @@ const VizlyRecharts: React.FC<VizlyRechartsProps> = ({
     }));
 
     return (
-      <div style={{ width: "100%", height }}>
+      <div style={{ width: "100%", height: typeof height === "number" ? `${height}px` : height }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={pyramidData} layout="vertical" stackOffset="none">
             <XAxis type="number" hide />
@@ -123,27 +130,29 @@ const VizlyRecharts: React.FC<VizlyRechartsProps> = ({
       const isTotal = i === rawData.length - 1;
       const start = currentTotal;
       if (!isTotal) currentTotal += val;
-
+      const end = isTotal ? currentTotal : start + val;
       return {
         name: d.x ?? d.label,
-        display: isTotal ? [0, currentTotal] : [start, start + val],
-        fill: isTotal ? colors[1] : val >= 0 ? colors[0] : "#ef4444"
+        base: isTotal ? 0 : Math.min(start, end),
+        size: isTotal ? Math.abs(currentTotal) : Math.abs(val),
+        fill: isTotal ? colors[1] : val >= 0 ? colors[0] : "#ef4444",
       };
     });
 
     return (
-      <div style={{ width: "100%", height }}>
+      <div style={{ width: "100%", height: typeof height === "number" ? `${height}px` : height }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={waterfallData}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="name" />
             <YAxis />
             <Tooltip />
-            <Bar dataKey="display">
-              {waterfallData.map((entry: any, i: number) => (
-                <Cell key={i} fill={entry.fill} />
-              ))}
-            </Bar>
+            <Bar dataKey="base" stackId="wf" fill="transparent" isAnimationActive={false} />
+            <Bar dataKey="size" stackId="wf">
+            {waterfallData.map((entry: any, i: number) => (
+            <Cell key={i} fill={entry.fill} />
+            ))}
+           </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -154,9 +163,21 @@ const VizlyRecharts: React.FC<VizlyRechartsProps> = ({
   // HISTOGRAM
   // ─────────────────────────────────────────────────────────────────────────
   if (t === "histogram") {
-    const chartData = datasets[0][0]?.data || datasets[0];
-    return (
-      <div style={{ width: "100%", height }}>
+    const raw = datasets[0];
+    const isPreBinned = raw[0]?.bin !== undefined || raw[0]?.count !== undefined;
+    let chartData: { x: string; y: number }[];
+    if (isPreBinned) {
+      chartData = raw.map((d: any) => ({ x: String(d.bin ?? d.x ?? ""), y: Number(d.count ?? d.y ?? 0) }));
+    } else {
+      const values = raw.map((d: any) => Number(d.value ?? d.y ?? 0));
+      const min = Math.min(...values), max = Math.max(...values);
+      const bins = 10, w = (max - min) / bins || 1;
+      const buckets = Array.from({ length: bins }, (_, i) => ({ x: `${(min + i * w).toFixed(1)}`, y: 0 }));
+      values.forEach(v => { buckets[Math.min(Math.floor((v - min) / w), bins - 1)].y++; });
+      chartData = buckets;
+    }
+    return (                                          // ← was missing
+      <div style={{ width: "100%", height: typeof height === "number" ? `${height}px` : height }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} barCategoryGap={0}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -177,7 +198,7 @@ const VizlyRecharts: React.FC<VizlyRechartsProps> = ({
   if (t === "pie" || t === "donut") {
     const chartData = datasets[0];
     return (
-      <div style={{ width: "100%", height }}>
+      <div style={{ width: "100%", height: typeof height === "number" ? `${height}px` : height }}>
         {titleText && (
           <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 500 }}>{titleText}</p>
         )}
@@ -214,7 +235,7 @@ const VizlyRecharts: React.FC<VizlyRechartsProps> = ({
   // ─────────────────────────────────────────────────────────────────────────
   if (t === "radar") {
     return (
-      <div style={{ width: "100%", height }}>
+      <div style={{ width: "100%", height: typeof height === "number" ? `${height}px` : height }}>
         {titleText && (
           <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 500 }}>{titleText}</p>
         )}
@@ -243,7 +264,7 @@ const VizlyRecharts: React.FC<VizlyRechartsProps> = ({
   // ─────────────────────────────────────────────────────────────────────────
   if (t === "scatter") {
     return (
-      <div style={{ width: "100%", height }}>s
+      <div style={{ width: "100%", height: typeof height === "number" ? `${height}px` : height }}>
         {titleText && (
           <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 500 }}>{titleText}</p>
         )}
@@ -306,7 +327,7 @@ const VizlyRecharts: React.FC<VizlyRechartsProps> = ({
   const seriesNames: string[] = options.series?.map((s: any) => s.name) ?? [];
 
   return (
-    <div style={{ width: "100%", height }}>
+    <div style={{ width: "100%", height: typeof height === "number" ? `${height}px` : height }}>
       {titleText && (
         <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 500 }}>{titleText}</p>
       )}

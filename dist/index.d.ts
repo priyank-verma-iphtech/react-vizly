@@ -12,7 +12,7 @@ export declare interface VizlyProps {
         align?: "left" | "center" | "right";
         style?: any;
     };
-    renderer?: "apexcharts" | "recharts" | "plotychart" | "echarts" | "chartjs";
+    renderer?: "apexcharts" | "recharts" | "echarts" | "plotlycharts";
 }
 
 export declare interface VizlyRef {

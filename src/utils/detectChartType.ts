@@ -19,7 +19,7 @@ export const detectChartType = (data: any[]): string => {
   if (first.source !== undefined && first.target !== undefined) return "sankey";
   if (first.date   !== undefined && first.value  !== undefined) return "calendar";
   if (first.children !== undefined)                             return "sunburst";
-  if (first.cumulative !== undefined)                           return "waterfall";
+  if (first.isTotal !== undefined || first.cumulative !== undefined) return "waterfall";
   if (first.bin  !== undefined)                                 return "histogram";
 
  

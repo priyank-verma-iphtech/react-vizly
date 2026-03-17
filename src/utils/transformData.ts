@@ -30,13 +30,14 @@ export const transformData = (type: string, data: any[]) => {
 
 
     case "gauge": {
-      // Gauge expects a single number or an array with one number
       const val = Number(
         Array.isArray(data) && data.length === 1
           ? (data[0].value ?? data[0].y ?? data[0])
           : data[0]?.value ?? data[0]?.y ?? 0
       );
-      series = [val];
+      // Clamp to 0–100 for radialBar compatibility
+      const clamped = isNaN(val) ? 0 : Math.min(100, Math.max(0, val));
+      series = [clamped];
       labels = [String(data[0]?.label ?? data[0]?.name ?? "")];
       break;
     }
@@ -53,7 +54,20 @@ export const transformData = (type: string, data: any[]) => {
       }];
       break;
     }
- 
+     
+    // water fall
+
+    case "waterfall": {
+      series = [{
+        name: "Series 1",
+        data: data.map(d => ({
+          x: String(d.x ?? d.label ?? d.category ?? d[fallbackCat]),
+          y: Number(d.value ?? d.y ?? d[numericKeys[0]] ?? 0),
+        })),
+      }];
+      break;
+    }
+
     // ── Funnel ────────────────────────────────────────────────────────────────
     // ApexCharts funnel REQUIRES {x, y} objects inside data[].
     case "funnel": {

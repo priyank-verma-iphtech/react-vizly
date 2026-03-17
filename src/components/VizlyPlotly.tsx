@@ -44,16 +44,7 @@ const VizlyPlotly: React.FC<VizlyPlotlyProps> = ({
   const isMulti   = Array.isArray(data[0]);
   const datasets: any[][] = isMulti ? (data as any[][]) : [data as any[]];
   const flat      = datasets[0];
-  const base = {
-    title:   titleText ? { text: titleText, left: "center" } : undefined,
-    tooltip: { trigger: "item" },
-    color:   colors,
-    ...options,
-  }
-
   const seriesNames: string[] = options.series?.map((s: any) => s.name) ?? [];
-
-  
   const baseLayout: Partial<Layout> = {
     title:         { text: titleText, font: { size: 14 } },
     height:        typeof height === "number" ? height : parseInt(String(height), 10) || 350,
@@ -95,7 +86,8 @@ const VizlyPlotly: React.FC<VizlyPlotlyProps> = ({
   }
   
   if (t === "gauge") {
-    const val = Number(datasets[0][0]?.data?.[0] ?? datasets[0][0] ?? 0);
+    const raw = datasets[0][0];
+    const val = Number(typeof raw === "number" ? raw : (raw?.value ?? raw?.y ?? raw ?? 0));
     const plotData: Data[] = [{
       type: "indicator",
       mode: "gauge+number",
@@ -109,7 +101,7 @@ const VizlyPlotly: React.FC<VizlyPlotlyProps> = ({
   }
   
   if (t === "sunburst") {
-    const flat = datasets[0][0]?.data || datasets[0];
+    const flat = datasets[0];
     const plotData: Data[] = [{
       type: "sunburst",
       labels: flat.map((d: any) => d.x),
@@ -158,8 +150,7 @@ const VizlyPlotly: React.FC<VizlyPlotlyProps> = ({
   }
 
   if (t === "pyramid") {
-    const engineData = datasets[0][0]?.data || (Array.isArray(datasets[0]) ? datasets[0] : []);
-    
+    const engineData = flat;
     const plotData: Data[] = [{
       type: "funnel" as any,
       y: engineData.map((d: any) => String(d.x ?? d.stage ?? "")),
@@ -184,13 +175,22 @@ const VizlyPlotly: React.FC<VizlyPlotlyProps> = ({
   }
    
   if (t === "histogram") {
-    const engineResult = datasets[0] as any;
-    const isPreBinned = Array.isArray(engineResult.categories) && engineResult.categories.length > 0;
-    
-    // If pre-binned, use categories. If raw, we need to extract from series.
-    const xData = isPreBinned ? engineResult.categories : (engineResult.series?.[0]?.data?.map((d: any) => d.x) || []);
-    const yData = isPreBinned ? engineResult.series?.[0]?.data : (engineResult.series?.[0]?.data?.map((d: any) => d.y) || []);
-  
+   
+    const isPreBinned = flat[0]?.bin !== undefined || flat[0]?.count !== undefined;
+    const xData: (string | number)[] = [];
+    const yData: number[] = [];
+    if (isPreBinned) {
+        flat.forEach((d: any) => { xData.push(String(d.bin ?? d.x ?? "")); yData.push(Number(d.count ?? d.y ?? 0)); });
+      } else {
+        const values = flat.map((d: any) => Number(d.value ?? d.y ?? 0));
+        const min = Math.min(...values), max = Math.max(...values);
+        const bins = 10, w = (max - min) / bins || 1;
+        const buckets = Array.from({ length: bins }, (_, i) => ({
+          label: `${(min + i * w).toFixed(1)}`, count: 0,
+        }));
+        values.forEach(v => { buckets[Math.min(Math.floor((v - min) / w), bins - 1)].count++; });
+        buckets.forEach(b => { xData.push(b.label); yData.push(b.count); });
+      }
     const plotData: Data[] = [{
       type: "bar",
       x: xData,
@@ -205,19 +205,15 @@ const VizlyPlotly: React.FC<VizlyPlotlyProps> = ({
    
   if (t === "nightingale") {
     // Check if data is wrapped in the engine's series object
-    const chartSeries = datasets[0][0] || datasets;
+    
   
-    const plotData: Data[] = chartSeries.map((ds: any, i: number) => {
-      const dataPoints = ds.data || ds; // Handle both wrapped and raw arrays
-      return {
+    const plotData = datasets.map((ds: any[], i: number) => ({
         type: "barpolar" as any,
-        r: dataPoints.map((d: any) => Number(d.value ?? d.y ?? d)),
-        theta: dataPoints.map((d: any) => String(d.label ?? d.x ?? "")),
-        name: ds.name ?? seriesNames[i] ?? `Series ${i + 1}`,
-        marker: { color: colors[i % colors.length] },
-      } as Data;
-    });
-  
+        r: ds.map((d: any) => Number(d.value ?? d.y ?? 0)),
+        theta: ds.map((d: any) => String(d.label ?? d.x ?? "")),
+        name: seriesNames[i] ?? `Series ${i + 1}`,
+        marker: { color: ds.map((_: any, j: number) => colors[j % colors.length]) },
+      } as Data))
     return (
       <Plot
         data={plotData}

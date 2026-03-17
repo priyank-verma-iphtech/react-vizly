@@ -14,6 +14,7 @@ import { processChartData } from "../utils/transformMultiCharts";
 import { looksLikeDate } from "../utils/transformData";
 import VizlyRecharts from "./VizlyRecharts";
 import VizlyECharts  from "./VizlyEcharts";
+import VizlyPlotly from "./VizlyPlotly";
 
 // 1
 const _handlers = new Map<string, () => void>();
@@ -28,7 +29,7 @@ export interface VizlyProps {
   options?: any;
   height?: number | string;
   title?: string | { text: string; align?: "left" | "center" | "right"; style?: any };
-  renderer?: "apexcharts" | "recharts" | "plotychart" | "echarts" | "chartjs";
+  renderer?: "apexcharts" | "recharts" | "echarts" | "plotlycharts";
 }
 
 export interface VizlyRef {
@@ -77,7 +78,6 @@ const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
       if (typeStr === "histogram")   return "bar";
       if (typeStr === "pyramid")     return "bar";
       if (typeStr === "conefunnel")  return "bar";
-      if (typeStr === "funnel")      return "bar";
       if (typeStr === "gauge")       return "radialBar";
       if (typeStr === "nightingale") return "polarArea";
       if (typeStr === "sunburst")    return "treemap";
@@ -107,12 +107,20 @@ const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
 
       // FIX: Ensure Pie/Donut get flat arrays, while XY/Bar get Object arrays
       let finalSeries: any = series;
-      if (isCircular || isGauge) {
+      if (isCircular) {
         if (Array.isArray(series) && typeof series[0] === "object" && series[0]?.data) {
           finalSeries = series[0].data;
         } else if (Array.isArray(series) && typeof series[0] === "object") {
           finalSeries = series.map((item: any) => item.y ?? item.value ?? 0);
         }
+      }
+
+      if (isGauge) {
+        finalSeries = (Array.isArray(finalSeries) ? finalSeries : [finalSeries])
+          .map((v: any) => {
+            const n = Number(v);
+            return isNaN(n) ? 0 : Math.min(100, Math.max(0, n));
+          });
       }
 
       const resolvedLabels: string[] = isCircular
@@ -239,7 +247,7 @@ const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
         }, 350);
         return () => clearTimeout(timer);
       }
-    }, [isModalOpen]);
+    }, [isModalOpen, data, type, options, title]);
 
     useImperativeHandle(ref, () => ({
       zoomIn: () => chartInstance.current?.zoomX(20, 80),
@@ -251,8 +259,8 @@ const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
     return (
       <>
       <div
-          style={{ height, width: "100%", position: "relative", overflow: "hidden" }}
-          
+          style={{ height: typeof height === "number" ? `${height}px` : height, width: "100%", position: "relative", overflow: "hidden" }}
+ 
         >
           <div ref={chartRef} style={{ height: "100%", width: "100%", overflow: "hidden" }} />
 
@@ -317,9 +325,9 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
       );
     }
 
-    if (renderer === "plotychart") {
+    if (renderer === "plotlycharts") {
       return (
-        <VizlyECharts
+        <VizlyPlotly
           data={data}
           type={type}
           options={options}
@@ -328,6 +336,8 @@ const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
         />
       );
     }
+
+    
 
     // ── DEFAULT: ApexCharts renderer (all existing code unchanged below) ───
     return (
