@@ -35,6 +35,14 @@ export interface VizlyRef {
   toggleFullscreen: () => void;
 }
 
+// ─── Inline SVG string for ApexCharts toolbar (no external dependency) ────────
+const EXPAND_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px;display:block">
+  <path d="M8 3H5a2 2 0 0 0-2 2v3"/>
+  <path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
+  <path d="M3 16v3a2 2 0 0 0 2 2h3"/>
+  <path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+</svg>`;
+
 // ─── Shared ApexCharts theme ──────────────────────────────────────────────────
 const APEX_COLORS = [
   "#3b82f6", "#f59e0b", "#10b981", "#f43f5e",
@@ -79,9 +87,10 @@ const APEX_THEME = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ExpandButton — always-visible top-right button
+// Floating ExpandButton — used by Recharts / ECharts / Plotly renderers
+// (ApexCharts uses the toolbar customIcon instead)
 // ─────────────────────────────────────────────────────────────────────────────
-const ExpandButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
+const FloatingExpandButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
   <button
     onClick={onClick}
     title="Expand"
@@ -89,16 +98,38 @@ const ExpandButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
       position:       "absolute",
       top:            8,
       right:          8,
+      width:          28,
+      height:         28,
+      borderRadius:   "7px",
+      border:         "1px solid rgba(0,0,0,0.08)",
+      background:     "rgba(255,255,255,0.92)",
+      backdropFilter: "blur(4px)",
       cursor:         "pointer",
-      
+      display:        "flex",
+      alignItems:     "center",
+      justifyContent: "center",
+      boxShadow:      "0 1px 4px rgba(0,0,0,0.10)",
+      zIndex:         20,
+      transition:     "all 0.15s ease",
+      opacity:        0.75,
+    }}
+    onMouseEnter={e => {
+      e.currentTarget.style.opacity    = "1";
+      e.currentTarget.style.transform  = "scale(1.1)";
+      e.currentTarget.style.background = "#fff";
+    }}
+    onMouseLeave={e => {
+      e.currentTarget.style.opacity    = "0.75";
+      e.currentTarget.style.transform  = "scale(1)";
+      e.currentTarget.style.background = "rgba(255,255,255,0.92)";
     }}
   >
-    <BsArrowsAngleExpand size={18} color="#475569" />
+    <BsArrowsAngleExpand size={12} color="#475569" />
   </button>
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ChartModal — glassmorphism modal shared by ALL renderers
+// ChartModal — shared glassmorphism modal for ALL renderers
 // ─────────────────────────────────────────────────────────────────────────────
 const MODAL_CHART_HEIGHT = 520;
 
@@ -109,12 +140,11 @@ const ChartModal: React.FC<{
   children: React.ReactNode;
 }> = ({ isOpen, onClose, title, children }) => {
 
-  // Close on Escape key
   useEffect(() => {
     if (!isOpen) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -122,8 +152,10 @@ const ChartModal: React.FC<{
   return (
     <>
       <style>{`
-        @keyframes vizlyFadeIn  { from { opacity:0; } to { opacity:1; } }
-        @keyframes vizlyScaleUp { from { transform:scale(0.95); opacity:0; } to { transform:scale(1); opacity:1; } }
+        @keyframes vizlyFadeIn  { from{opacity:0} to{opacity:1} }
+        @keyframes vizlyScaleUp { from{transform:scale(0.95);opacity:0} to{transform:scale(1);opacity:1} }
+        .vizly-expand-icon { cursor:pointer; display:inline-flex; align-items:center; }
+        .vizly-expand-icon:hover svg path { stroke:#374151 !important; }
       `}</style>
 
       {/* Backdrop */}
@@ -142,7 +174,7 @@ const ChartModal: React.FC<{
           animation:            "vizlyFadeIn 0.15s ease-out",
         }}
       >
-        {/* Modal panel */}
+        {/* Panel */}
         <div
           style={{
             width:                "76%",
@@ -178,7 +210,7 @@ const ChartModal: React.FC<{
             </div>
           )}
 
-          {/* Close */}
+          {/* Close button */}
           <button
             onClick={onClose}
             aria-label="Close"
@@ -186,15 +218,31 @@ const ChartModal: React.FC<{
               position:       "absolute",
               top:            10,
               right:          12,
+              width:          28,
+              height:         28,
+              borderRadius:   "50%",
+              border:         "1px solid rgba(0,0,0,0.08)",
+              background:     "rgba(255,255,255,0.9)",
               cursor:         "pointer",
+              display:        "flex",
+              alignItems:     "center",
+              justifyContent: "center",
+              boxShadow:      "0 1px 4px rgba(0,0,0,0.08)",
+              transition:     "all 0.15s",
             }}
-            onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.1)"; e.currentTarget.style.background = "#fff"; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)";   e.currentTarget.style.background = "rgba(255,255,255,0.9)"; }}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform  = "scale(1.1)";
+              e.currentTarget.style.background = "#fff";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform  = "scale(1)";
+              e.currentTarget.style.background = "rgba(255,255,255,0.9)";
+            }}
           >
             <BsArrowsAngleContract size={12} color="#475569" />
           </button>
 
-          {/* Chart */}
+          {/* Chart content */}
           <div style={{ width: "100%", height: MODAL_CHART_HEIGHT }}>
             {children}
           </div>
@@ -205,335 +253,1015 @@ const ChartModal: React.FC<{
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ChartWrapper — wraps ANY renderer with expand button + modal
+// ApexRenderer
+// Expand icon lives INSIDE the ApexCharts toolbar, right after the download icon.
 // ─────────────────────────────────────────────────────────────────────────────
-const ChartWrapper: React.FC<{
-  height:    number | string;
-  titleText: string;
-  renderChart: (modalHeight: number) => React.ReactNode;
-}> = ({ height, titleText, renderChart }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const ApexRenderer = forwardRef<
+  VizlyRef,
+  Omit<VizlyProps, "renderer"> & { resolvedHeight: number | string }
+>(({ data, type, options = {}, resolvedHeight, title }, ref) => {
 
-  return (
-    <>
-      {/* Card with expand button */}
-      <div style={{
-        position: "relative",
-        width:    "100%",
-        height:   typeof height === "number" ? `${height}px` : height,
-        overflow: "hidden",
-      }}>
-        {renderChart(0)}
-        <ExpandButton onClick={() => setIsOpen(true)} />
-      </div>
+  const chartRef      = useRef<HTMLDivElement>(null);
+  const chartInstance = useRef<ApexCharts | null>(null);
+  const instanceId    = useMemo(() => `vizly-${++_counter}`, []);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-      {/* Modal — renders a fresh instance of the same chart at MODAL_CHART_HEIGHT */}
-      <ChartModal
-        isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
-        title={titleText}
-      >
-        {isOpen && renderChart(MODAL_CHART_HEIGHT)}
-      </ChartModal>
-    </>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ApexRenderer — pure chart, no expand logic (handled by ChartWrapper)
-// ─────────────────────────────────────────────────────────────────────────────
-const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer"> & { resolvedHeight: number | string }>(
-  ({ data, type, options = {}, resolvedHeight, title }, ref) => {
-    const chartRef      = useRef<HTMLDivElement>(null);
-    const chartInstance = useRef<ApexCharts | null>(null);
-    const instanceId    = useMemo(() => `vizly-${++_counter}`, []);
-
-    // ── Type mapper ───────────────────────────────────────────────────────────
-    const mapApexType = (t: string) => {
-      const MAP: Record<string, string> = {
-        column: "bar", rangebar: "rangeBar", boxplot: "boxPlot",
-        polararea: "polarArea", radialbar: "radialBar", waterfall: "bar",
-        histogram: "bar", pyramid: "bar", conefunnel: "bar", funnel: "bar",
-        gauge: "radialBar", nightingale: "polarArea", sunburst: "treemap",
-        sankey: "bar", calendar: "heatmap", timeline: "rangeBar",
-      };
-      return (MAP[String(t).toLowerCase()] ?? t) as any;
+  // ── Type mapper ─────────────────────────────────────────────────────────────
+  const mapApexType = (t: string) => {
+    const MAP: Record<string, string> = {
+      column: "bar", rangebar: "rangeBar", boxplot: "boxPlot",
+      polararea: "polarArea", radialbar: "radialBar", waterfall: "bar",
+      histogram: "bar", pyramid: "bar", conefunnel: "bar", funnel: "bar",
+      gauge: "radialBar", nightingale: "polarArea", sunburst: "treemap",
+      sankey: "bar", calendar: "heatmap", timeline: "rangeBar",
     };
+    return (MAP[String(t).toLowerCase()] ?? t) as any;
+  };
 
-    // ── Config builder ────────────────────────────────────────────────────────
-    const getChartConfig = () => {
-      const processed = processChartData(type, data);
-      if (!processed || processed.length === 0) return { series: [] };
+  // ── Config builder ──────────────────────────────────────────────────────────
+  const getChartConfig = (forModal = false) => {
+    const processed = processChartData(type, data);
+    if (!processed || processed.length === 0) return { series: [] };
 
-      const { type: dType, series, labels, categories } = processed[0];
-      const t      = String(dType).toLowerCase();
-      const engine = chartEngine[t] || "xy";
+    const { type: dType, series, labels, categories } = processed[0];
+    const t      = String(dType).toLowerCase();
+    const engine = chartEngine[t] || "xy";
 
-      const typeArray  = Array.isArray(type) ? (type as string[]) : [t];
-      const isMixed    = Array.isArray(data[0]) && typeArray.length > 1;
-      const mixedTypes = isMixed ? typeArray.map(mt => String(mt).toLowerCase()) : [t];
+    const typeArray  = Array.isArray(type) ? (type as string[]) : [t];
+    const isMixed    = Array.isArray(data[0]) && typeArray.length > 1;
+    const mixedTypes = isMixed ? typeArray.map(mt => String(mt).toLowerCase()) : [t];
 
-      const isCircular    = engine === "circular";
-      const isRadialBar   = t === "radialbar";
-      const isPolarArea   = t === "polararea" || t === "nightingale";
-      const isRadar       = t === "radar";
-      const isFunnel      = t === "funnel" || t === "conefunnel";
-      const isPyramid     = t === "pyramid";
-      const isRange       = engine === "range";
-      const isGauge       = t === "gauge";
-      const isWaterfall   = t === "waterfall";
-      const isCandlestick = t === "candlestick";
-      const isBoxPlot     = t === "boxplot";
-      const isBar         = t === "bar" || t === "column";
-      const isLine        = t === "line";
-      const isArea        = t === "area";
+    const isCircular    = engine === "circular";
+    const isRadialBar   = t === "radialbar";
+    const isPolarArea   = t === "polararea" || t === "nightingale";
+    const isRadar       = t === "radar";
+    const isFunnel      = t === "funnel" || t === "conefunnel";
+    const isPyramid     = t === "pyramid";
+    const isRange       = engine === "range";
+    const isGauge       = t === "gauge";
+    const isWaterfall   = t === "waterfall";
+    const isCandlestick = t === "candlestick";
+    const isBoxPlot     = t === "boxplot";
+    const isBar         = t === "bar" || t === "column";
+    const isLine        = t === "line";
+    const isArea        = t === "area";
 
-      let finalSeries: any = series;
+    // ── Series unwrapping ──────────────────────────────────────────────────
+    let finalSeries: any = series;
 
-      if (isCircular || isPolarArea) {
-        if (Array.isArray(series) && series.length > 0) {
-          if (typeof series[0] === "object" && series[0]?.data)
-            finalSeries = series[0].data;
-          else if (typeof series[0] === "object" && !Array.isArray(series[0]))
-            finalSeries = series.map((item: any) => Number(item.y ?? item.value ?? 0));
-        }
-      }
-      if (isRadialBar && Array.isArray(series) && series.length > 0) {
+    if (isCircular || isPolarArea) {
+      if (Array.isArray(series) && series.length > 0) {
         if (typeof series[0] === "object" && series[0]?.data)
           finalSeries = series[0].data;
         else if (typeof series[0] === "object" && !Array.isArray(series[0]))
           finalSeries = series.map((item: any) => Number(item.y ?? item.value ?? 0));
       }
-      if (isGauge) {
-        finalSeries = (Array.isArray(finalSeries) ? finalSeries : [finalSeries])
-          .map((v: any) => { const n = Number(v); return isNaN(n) ? 0 : Math.min(100, Math.max(0, n)); });
+    }
+    if (isRadialBar && Array.isArray(series) && series.length > 0) {
+      if (typeof series[0] === "object" && series[0]?.data)
+        finalSeries = series[0].data;
+      else if (typeof series[0] === "object" && !Array.isArray(series[0]))
+        finalSeries = series.map((item: any) => Number(item.y ?? item.value ?? 0));
+    }
+    if (isGauge) {
+      finalSeries = (Array.isArray(finalSeries) ? finalSeries : [finalSeries])
+        .map((v: any) => { const n = Number(v); return isNaN(n) ? 0 : Math.min(100, Math.max(0, n)); });
+    }
+    if (isRadar && Array.isArray(series) && series.length > 0) {
+      const s0 = series[0];
+      if (s0?.data && Array.isArray(s0.data) && typeof s0.data[0] === "number") {
+        finalSeries = [{
+          name: s0.name ?? "Series 1",
+          data: s0.data.map((val: number, i: number) => ({
+            x: categories[i] ?? labels[i] ?? `Item ${i + 1}`, y: val,
+          })),
+        }];
       }
-      if (isRadar && Array.isArray(series) && series.length > 0) {
-        const s0 = series[0];
-        if (s0?.data && Array.isArray(s0.data) && typeof s0.data[0] === "number") {
-          finalSeries = [{
-            name: s0.name ?? "Series 1",
-            data: s0.data.map((val: number, i: number) => ({
-              x: categories[i] ?? labels[i] ?? `Item ${i + 1}`, y: val,
-            })),
-          }];
-        }
-      }
+    }
 
-      const allXY =
-        Array.isArray(finalSeries) && finalSeries.length > 0 &&
-        Array.isArray(finalSeries[0]?.data) &&
-        finalSeries[0]?.data?.[0] !== null &&
-        typeof finalSeries[0]?.data?.[0] === "object" &&
-        "x" in (finalSeries[0]?.data?.[0] ?? {});
+    const allXY =
+      Array.isArray(finalSeries) && finalSeries.length > 0 &&
+      Array.isArray(finalSeries[0]?.data) &&
+      finalSeries[0]?.data?.[0] !== null &&
+      typeof finalSeries[0]?.data?.[0] === "object" &&
+      "x" in (finalSeries[0]?.data?.[0] ?? {});
 
-      const resolvedLabels: string[] =
-        isCircular || isRadialBar || isPolarArea
-          ? (labels?.length ? labels : categories?.length ? categories : [])
-          : [];
+    const resolvedLabels: string[] =
+      isCircular || isRadialBar || isPolarArea
+        ? (labels?.length ? labels : categories?.length ? categories : [])
+        : [];
 
-      const resolvedCategories: string[] = (() => {
-        if (allXY || isRadar || isCircular || isPolarArea || isRadialBar || isFunnel || isRange) return [];
-        return categories?.length ? categories : labels?.length ? labels : [];
-      })();
+    const resolvedCategories: string[] = (() => {
+      if (allXY || isRadar || isCircular || isPolarArea || isRadialBar || isFunnel || isRange) return [];
+      return categories?.length ? categories : labels?.length ? labels : [];
+    })();
 
-      const xAxisType = isCandlestick ? "datetime"
-        : (isRange && !isBoxPlot
-            ? (Array.isArray(series) && looksLikeDate(String(series[0]?.data?.[0]?.x ?? "")) ? "datetime" : "numeric")
-            : "category");
+    const xAxisType = isCandlestick ? "datetime"
+      : (isRange && !isBoxPlot
+          ? (Array.isArray(series) && looksLikeDate(String(series[0]?.data?.[0]?.x ?? "")) ? "datetime" : "numeric")
+          : "category");
 
-      const markerSize  = isLine ? 4 : isArea ? 3 : 0;
-      const strokeWidth = isBar || isGauge || isCircular || isPolarArea || isRadialBar ? 0 : 2.5;
+    const markerSize  = isLine ? 4 : isArea ? 3 : 0;
+    const strokeWidth = isBar || isGauge || isCircular || isPolarArea || isRadialBar ? 0 : 2.5;
 
-      return {
-        ...options,
-        colors: options.colors ?? APEX_COLORS,
-        chart: {
-          id:         `vizly-${instanceId}`,
-          type:       mapApexType(t),
-          height:     "100%",
-          width:      "100%",
-          stacked:    options.stacked ?? false,
-          background: "transparent",
+    return {
+      ...options,
+      colors: options.colors ?? APEX_COLORS,
+
+      chart: {
+        id:         forModal ? `${instanceId}-modal` : instanceId,
+        type:       mapApexType(t),
+        height:     "100%",
+        width:      "100%",
+        stacked:    options.stacked ?? false,
+        background: "transparent",
+        fontFamily: "inherit",
+        animations: {
+          enabled:          true,
+          speed:            700,
+          animateGradually: { enabled: true, delay: 80 },
+        },
+        toolbar: {
+          show:  true,
+          tools: {
+            download:  true,
+            selection: true,
+            zoom:      true,
+            zoomin:    true,
+            zoomout:   true,
+            pan:       true,
+            reset:     true,
+            // ── Expand icon — placed right after download (index: -1) ──────
+            customIcons: forModal ? [] : [
+              {
+                icon:  EXPAND_ICON_SVG,
+                index: -1,           // immediately after the download icon
+                title: "Expand",
+                class: "vizly-expand-icon",
+                click: () => setIsModalOpen(true),
+              },
+            ],
+          },
+          export: {
+            csv: { filename: "chart-data" },
+            svg: { filename: "chart"      },
+            png: { filename: "chart"      },
+          },
+        },
+        dropShadow: { enabled: false },
+        ...options.chart,
+      },
+
+      grid:   { ...APEX_THEME.grid,  ...options.grid  },
+
+      stroke: {
+        width: isMixed
+          ? mixedTypes.map(mt => mt === "bar" || mt === "column" ? 0 : 2.5)
+          : (isBar || isCircular || isPolarArea || isRadialBar || isGauge ? 0 : strokeWidth),
+        curve:   "smooth",
+        lineCap: "round",
+        ...options.stroke,
+      },
+
+      markers: {
+        size: isMixed
+          ? mixedTypes.map(mt => mt === "line" ? 4 : mt === "area" ? 3 : 0)
+          : markerSize,
+        strokeWidth: 0,
+        hover: {
+          size: isMixed
+            ? mixedTypes.map(mt => mt === "line" ? 6 : mt === "area" ? 5 : 0)
+            : markerSize + 2,
+        },
+        ...options.markers,
+      },
+
+      fill: {
+        opacity: isMixed
+          ? mixedTypes.map(mt => mt === "area" ? 0.18 : 1)
+          : isArea ? [0.18, 1] : 1,
+        ...options.fill,
+      },
+
+      series:   finalSeries,
+      labels:   resolvedLabels,
+
+      xaxis: {
+        type:       xAxisType,
+        categories: resolvedCategories,
+        position:   "bottom",
+        ...APEX_THEME.xaxis,
+        ...options.xaxis,
+      },
+
+      yaxis:      { ...APEX_THEME.yaxis,  ...options.yaxis  },
+      legend:     { ...APEX_THEME.legend, ...options.legend },
+      dataLabels: { enabled: false,       ...options.dataLabels },
+
+      plotOptions: {
+        ...options.plotOptions,
+        bar: {
+          horizontal:   !isMixed && (isFunnel || t === "rangebar" || t === "timeline" || isPyramid),
+          isFunnel:     isFunnel || t === "conefunnel",
+          distributed:  isFunnel || t === "conefunnel" || isWaterfall,
+          isFunnelPlot: t === "conefunnel",
+          borderRadius: isBar ? 4 : 0,
+          columnWidth:  "58%",
+          barHeight:    "60%",
+          ...options.plotOptions?.bar,
+          ...(isWaterfall && !options.plotOptions?.bar?.colors ? {
+            colors: {
+              ranges: [
+                { from: -Infinity, to: -0.001, color: "#f43f5e" },
+                { from: 0,         to: Infinity, color: "#10b981" },
+              ],
+            },
+          } : {}),
+        },
+        radialBar: isGauge
+          ? {
+              startAngle: -135,
+              endAngle:    135,
+              hollow:      { size: "58%", background: "transparent" },
+              track:       { background: "#f1f5f9", strokeWidth: "100%", margin: 4 },
+              dataLabels: {
+                name:  { show: true, offsetY: -10, fontSize: "13px", color: "#64748b" },
+                value: { show: true, fontSize: "26px", fontWeight: 700, color: "#0f172a", formatter: (v: number) => `${v}%` },
+              },
+              ...options.plotOptions?.radialBar,
+            }
+          : {
+              hollow:      { size: "30%", background: "transparent" },
+              track:       { background: "#f1f5f9", strokeWidth: "100%" },
+              dataLabels:  { name: { show: true }, value: { show: true }, total: { show: true, label: "Total" } },
+              ...options.plotOptions?.radialBar,
+            },
+        pie: {
+          donut: {
+            size:   "55%",
+            labels: {
+              show:  true,
+              total: { show: true, label: "Total", fontSize: "13px", color: "#64748b", fontFamily: "inherit" },
+            },
+          },
+          ...options.plotOptions?.pie,
+        },
+        heatmap: {
+          enableShades: true,
+          colorScale:   { ranges: options.plotOptions?.heatmap?.colorScale?.ranges || [] },
+        },
+      },
+
+      title: {
+        text:   (typeof title === "string" ? title : (title as any)?.text ?? options.title?.text) ?? "",
+        align:  typeof title === "object"  ? (title as any).align : options.title?.align ?? "left",
+        style: {
+          fontSize:   "15px",
+          fontWeight: "600",
           fontFamily: "inherit",
-          animations: { enabled: true, speed: 700, animateGradually: { enabled: true, delay: 80 } },
-          toolbar: {
-            show: true,
-            tools: { download: true, zoom: true, zoomin: true, zoomout: true, pan: true, reset: true, customIcons: [] },
-            export: { csv: { filename: "chart-data" }, svg: { filename: "chart" }, png: { filename: "chart" } },
-          },
-          dropShadow: { enabled: false },
-          ...options.chart,
+          color:      "#1e293b",
+          ...(typeof title === "object" ? (title as any).style : {}),
         },
-        grid:   { ...APEX_THEME.grid,  ...options.grid  },
-        stroke: {
-          width: isMixed
-            ? mixedTypes.map(mt => mt === "bar" || mt === "column" ? 0 : 2.5)
-            : (isBar || isCircular || isPolarArea || isRadialBar || isGauge ? 0 : strokeWidth),
-          curve: "smooth", lineCap: "round", ...options.stroke,
-        },
-        markers: {
-          size: isMixed ? mixedTypes.map(mt => mt === "line" ? 4 : mt === "area" ? 3 : 0) : markerSize,
-          strokeWidth: 0,
-          hover: { size: isMixed ? mixedTypes.map(mt => mt === "line" ? 6 : mt === "area" ? 5 : 0) : markerSize + 2 },
-          ...options.markers,
-        },
-        fill: {
-          opacity: isMixed ? mixedTypes.map(mt => mt === "area" ? 0.18 : 1) : isArea ? [0.18, 1] : 1,
-          ...options.fill,
-        },
-        series:   finalSeries,
-        labels:   resolvedLabels,
-        xaxis:    { type: xAxisType, categories: resolvedCategories, position: "bottom", ...APEX_THEME.xaxis, ...options.xaxis },
-        yaxis:    { ...APEX_THEME.yaxis,  ...options.yaxis  },
-        legend:   { ...APEX_THEME.legend, ...options.legend },
-        dataLabels: { enabled: false, ...options.dataLabels },
-        plotOptions: {
-          ...options.plotOptions,
-          bar: {
-            horizontal:   !isMixed && (isFunnel || t === "rangebar" || t === "timeline" || isPyramid),
-            isFunnel:     isFunnel || t === "conefunnel",
-            distributed:  isFunnel || t === "conefunnel" || isWaterfall,
-            isFunnelPlot: t === "conefunnel",
-            borderRadius: isBar ? 4 : 0,
-            columnWidth:  "58%",
-            barHeight:    "60%",
-            ...options.plotOptions?.bar,
-            ...(isWaterfall && !options.plotOptions?.bar?.colors ? {
-              colors: { ranges: [{ from: -Infinity, to: -0.001, color: "#f43f5e" }, { from: 0, to: Infinity, color: "#10b981" }] },
-            } : {}),
-          },
-          radialBar: isGauge
-            ? { startAngle: -135, endAngle: 135, hollow: { size: "58%", background: "transparent" }, track: { background: "#f1f5f9", strokeWidth: "100%", margin: 4 }, dataLabels: { name: { show: true, offsetY: -10, fontSize: "13px", color: "#64748b" }, value: { show: true, fontSize: "26px", fontWeight: 700, color: "#0f172a", formatter: (v: number) => `${v}%` } }, ...options.plotOptions?.radialBar }
-            : { hollow: { size: "30%", background: "transparent" }, track: { background: "#f1f5f9", strokeWidth: "100%" }, dataLabels: { name: { show: true }, value: { show: true }, total: { show: true, label: "Total" } }, ...options.plotOptions?.radialBar },
-          pie: { donut: { size: "55%", labels: { show: true, total: { show: true, label: "Total", fontSize: "13px", color: "#64748b", fontFamily: "inherit" } } }, ...options.plotOptions?.pie },
-          heatmap: { enableShades: true, colorScale: { ranges: options.plotOptions?.heatmap?.colorScale?.ranges || [] } },
-        },
-        title: {
-          text:   (typeof title === "string" ? title : (title as any)?.text ?? options.title?.text) ?? "",
-          align:  typeof title === "object" ? (title as any).align : options.title?.align ?? "left",
-          style:  { fontSize: "15px", fontWeight: "600", fontFamily: "inherit", color: "#1e293b", ...(typeof title === "object" ? (title as any).style : {}) },
-          margin: 12, offsetY: 4, ...options.title,
-        },
-        tooltip: { ...APEX_THEME.tooltip, shared: !isRange && !isBoxPlot, intersect: isRange || isBoxPlot, ...options.tooltip },
-        theme: { mode: "light" as const },
-      };
+        margin:  12,
+        offsetY: 4,
+        ...options.title,
+      },
+
+      tooltip: {
+        ...APEX_THEME.tooltip,
+        shared:    !isRange && !isBoxPlot,
+        intersect:  isRange  || isBoxPlot,
+        ...options.tooltip,
+      },
+
+      theme: { mode: "light" as const },
+    };
+  };
+
+  // ── Mount / update chart ────────────────────────────────────────────────────
+  useEffect(() => {
+    let isMounted = true;
+    let observer: ResizeObserver | null = null;
+
+    const initChart = async (el: HTMLDivElement) => {
+      if (chartInstance.current) {
+        await chartInstance.current.destroy();
+        chartInstance.current = null;
+      }
+      if (!isMounted || !el) return;
+      el.innerHTML = "";
+      const chart = new ApexCharts(el, getChartConfig(false));
+      chartInstance.current = chart;
+      if (!isMounted) { chart.destroy(); return; }
+      await chart.render();
     };
 
-    // ── Mount chart ───────────────────────────────────────────────────────────
-    useEffect(() => {
-      let isMounted = true;
-      let observer: ResizeObserver | null = null;
+    const tryInit = () => {
+      const el = chartRef.current;
+      if (!el) return;
+      const { width, height: h } = el.getBoundingClientRect();
+      if (width > 0 && h > 0) { observer?.disconnect(); initChart(el); }
+    };
 
-      const initChart = async (el: HTMLDivElement) => {
-        if (chartInstance.current) { await chartInstance.current.destroy(); chartInstance.current = null; }
-        if (!isMounted || !el) return;
-        el.innerHTML = "";
-        const chart = new ApexCharts(el, getChartConfig());
-        chartInstance.current = chart;
-        if (!isMounted) { chart.destroy(); return; }
-        await chart.render();
-      };
+    if (chartRef.current) {
+      const { width, height: h } = chartRef.current.getBoundingClientRect();
+      if (width > 0 && h > 0) initChart(chartRef.current);
+      else { observer = new ResizeObserver(tryInit); observer.observe(chartRef.current); }
+    }
 
-      const tryInit = () => {
-        const el = chartRef.current;
-        if (!el) return;
-        const { width, height: h } = el.getBoundingClientRect();
-        if (width > 0 && h > 0) { observer?.disconnect(); initChart(el); }
-      };
+    return () => {
+      isMounted = false;
+      observer?.disconnect();
+      chartInstance.current?.destroy();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, type, options, title, resolvedHeight]);
 
-      if (chartRef.current) {
-        const { width, height: h } = chartRef.current.getBoundingClientRect();
-        if (width > 0 && h > 0) initChart(chartRef.current);
-        else { observer = new ResizeObserver(tryInit); observer.observe(chartRef.current); }
+  useImperativeHandle(ref, () => ({
+    zoomIn:           () => chartInstance.current?.zoomX(20, 80),
+    zoomOut:          () => chartInstance.current?.resetSeries(),
+    reset:            () => chartInstance.current?.resetSeries(),
+    toggleFullscreen: () => setIsModalOpen(prev => !prev),
+  }));
+
+  // ── Modal chart ref ─────────────────────────────────────────────────────────
+  const modalChartRef      = useRef<HTMLDivElement>(null);
+  const modalChartInstance = useRef<ApexCharts | null>(null);
+
+  useEffect(() => {
+    if (!isModalOpen || !modalChartRef.current) return;
+    let cancelled = false;
+
+    const timer = setTimeout(async () => {
+      if (cancelled || !modalChartRef.current) return;
+      if (modalChartInstance.current) {
+        await modalChartInstance.current.destroy();
+        modalChartInstance.current = null;
       }
+      modalChartRef.current.innerHTML = "";
+      const chart = new ApexCharts(modalChartRef.current, getChartConfig(true));
+      modalChartInstance.current = chart;
+      if (!cancelled) await chart.render();
+    }, 80);
 
-      return () => { isMounted = false; observer?.disconnect(); chartInstance.current?.destroy(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [data, type, options, title, resolvedHeight]);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      modalChartInstance.current?.destroy();
+      modalChartInstance.current = null;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isModalOpen]);
 
-    useImperativeHandle(ref, () => ({
-      zoomIn:           () => chartInstance.current?.zoomX(20, 80),
-      zoomOut:          () => chartInstance.current?.resetSeries(),
-      reset:            () => chartInstance.current?.resetSeries(),
-      toggleFullscreen: () => {},
-    }));
+  return (
+    <>
+      {/* Main chart — full size in card */}
+      <div
+        ref={chartRef}
+        style={{ height: "100%", width: "100%", overflow: "hidden" }}
+      />
 
-    return <div ref={chartRef} style={{ height: "100%", width: "100%", overflow: "hidden" }} />;
-  }
-);
+      {/* Modal with fresh ApexCharts instance */}
+      <ChartModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={typeof title === "string" ? title : (title as any)?.text}
+      >
+        <div
+          ref={modalChartRef}
+          style={{ width: "100%", height: "100%" }}
+        />
+      </ChartModal>
+    </>
+  );
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VizlyChart — public API
-// Adds universal expand button + modal to every renderer
+// ApexCharts  → expand icon lives inside the toolbar (next to download)
+// Other renderers → floating expand button overlay (top-right of container)
 // ─────────────────────────────────────────────────────────────────────────────
 const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
   ({ data, type, options = {}, height = 350, title, renderer = "apexcharts" }, ref) => {
 
-    const apexRef    = useRef<VizlyRef>(null);
-    const titleText  = typeof title === "string" ? title : (title as any)?.text ?? "";
+    const apexRef   = useRef<VizlyRef>(null);
+    const titleText = typeof title === "string" ? title : (title as any)?.text ?? "";
+
+    // For non-Apex renderers, manage modal state here
+    const [isOpen, setIsOpen] = useState(false);
 
     useImperativeHandle(ref, () => ({
       zoomIn:           () => apexRef.current?.zoomIn(),
       zoomOut:          () => apexRef.current?.zoomOut(),
       reset:            () => apexRef.current?.reset(),
-      toggleFullscreen: () => {},
+      toggleFullscreen: () => apexRef.current?.toggleFullscreen(),
     }));
 
-    // ── Recharts ──────────────────────────────────────────────────────────────
-    if (renderer === "recharts") {
+    // ── ApexCharts — toolbar icon handles expand, no extra wrapper needed ──
+    if (renderer === "apexcharts" || !renderer) {
       return (
-        <ChartWrapper height={height} titleText={titleText} renderChart={mh => (
+        <div style={{
+          position: "relative",
+          width:    "100%",
+          height:   typeof height === "number" ? `${height}px` : height,
+          overflow: "hidden",
+        }}>
+          <ApexRenderer
+            ref={apexRef}
+            data={data}
+            type={type}
+            options={options}
+            resolvedHeight={height}
+            title={title}
+          />
+        </div>
+      );
+    }
+
+    // ── Recharts / ECharts / Plotly — floating button + shared modal ──────
+    const renderInner = (modalHeight: number) => {
+      const h = modalHeight > 0 ? modalHeight : height;
+
+      if (renderer === "recharts") {
+        return (
           <VizlyRecharts
-            data={data} type={type} options={options}
-            height={mh > 0 ? mh : height}
-            title={title}
+            data={data} type={type} options={options} height={h} title={title}
           />
-        )} />
-      );
-    }
-
-    // ── ECharts ───────────────────────────────────────────────────────────────
-    if (renderer === "echarts") {
-      return (
-        <ChartWrapper height={height} titleText={titleText} renderChart={mh => (
+        );
+      }
+      if (renderer === "echarts") {
+        return (
           <VizlyECharts
-            data={data} type={type} options={options}
-            height={mh > 0 ? mh : height}
-            title={title}
+            data={data} type={type} options={options} height={h} title={title}
           />
-        )} />
-      );
-    }
-
-    // ── Plotly ────────────────────────────────────────────────────────────────
-    if (renderer === "plotlycharts") {
-      return (
-        <ChartWrapper height={height} titleText={titleText} renderChart={mh => (
+        );
+      }
+      if (renderer === "plotlycharts") {
+        return (
           <VizlyPlotly
-            data={data} type={type} options={options}
-            height={mh > 0 ? mh : height}
-            title={title}
+            data={data} type={type} options={options} height={h} title={title}
           />
-        )} />
-      );
-    }
+        );
+      }
+      return null;
+    };
 
-    // ── ApexCharts (default) ──────────────────────────────────────────────────
     return (
-      <ChartWrapper height={height} titleText={titleText} renderChart={mh => (
-        <ApexRenderer
-          ref={mh > 0 ? undefined : apexRef}
-          data={data} type={type} options={options}
-          resolvedHeight={mh > 0 ? mh : height}
-          title={title}
-        />
-      )} />
+      <>
+        {/* Card */}
+        <div style={{
+          position: "relative",
+          width:    "100%",
+          height:   typeof height === "number" ? `${height}px` : height,
+          overflow: "hidden",
+        }}>
+          {renderInner(0)}
+
+          {/* Floating expand button — top right */}
+          <FloatingExpandButton onClick={() => setIsOpen(true)} />
+        </div>
+
+        {/* Modal */}
+        <ChartModal
+          isOpen={isOpen}
+          onClose={() => setIsOpen(false)}
+          title={titleText}
+        >
+          {isOpen && renderInner(MODAL_CHART_HEIGHT)}
+        </ChartModal>
+      </>
     );
   }
 );
 
 export default VizlyChart;
+
+
+// import React, {
+//   useEffect,
+//   useRef,
+//   useState,
+//   useMemo,
+//   forwardRef,
+//   useImperativeHandle,
+// } from "react";
+// import ApexCharts from "apexcharts";
+// import { BsArrowsAngleExpand, BsArrowsAngleContract } from "react-icons/bs";
+// import { chartEngine } from "../utils/chartEngine";
+// import { processChartData } from "../utils/transformMultiCharts";
+// import { looksLikeDate } from "../utils/transformData";
+// import VizlyRecharts from "./VizlyRecharts";
+// import VizlyECharts from "./VizlyEcharts";
+// import VizlyPlotly from "./VizlyPlotly";
+
+// // ─── Counter for unique chart IDs ─────────────────────────────────────────────
+// let _counter = 0;
+
+// // ─── Types ────────────────────────────────────────────────────────────────────
+// export interface VizlyProps {
+//   data:      any[] | any[][];
+//   type?:     string | string[];
+//   options?:  any;
+//   height?:   number | string;
+//   title?:    string | { text: string; align?: "left" | "center" | "right"; style?: any };
+//   renderer?: "apexcharts" | "recharts" | "echarts" | "plotlycharts";
+// }
+
+// export interface VizlyRef {
+//   zoomIn:           () => void;
+//   zoomOut:          () => void;
+//   reset:            () => void;
+//   toggleFullscreen: () => void;
+// }
+
+// // ─── Shared ApexCharts theme ──────────────────────────────────────────────────
+// const APEX_COLORS = [
+//   "#3b82f6", "#f59e0b", "#10b981", "#f43f5e",
+//   "#8b5cf6", "#06b6d4", "#f97316", "#14b8a6",
+//   "#a855f7", "#0ea5e9",
+// ];
+
+// const APEX_THEME = {
+//   tooltip: {
+//     theme:  "dark",
+//     style:  { fontSize: "13px", fontFamily: "inherit" },
+//     x:      { show: true },
+//     marker: { show: true },
+//     fixed:  { enabled: false },
+//   },
+//   grid: {
+//     borderColor:     "#f1f5f9",
+//     strokeDashArray: 4,
+//     xaxis:           { lines: { show: false } },
+//     yaxis:           { lines: { show: true  } },
+//     padding:         { left: 20, right: 20, bottom: 10, top: 0 },
+//   },
+//   xaxis: {
+//     axisBorder: { show: false },
+//     axisTicks:  { show: false },
+//     labels:     { style: { colors: "#94a3b8", fontSize: "12px", fontFamily: "inherit" } },
+//   },
+//   yaxis: {
+//     labels: { style: { colors: "#94a3b8", fontSize: "12px", fontFamily: "inherit" } },
+//   },
+//   legend: {
+//     position:        "bottom"  as const,
+//     horizontalAlign: "center"  as const,
+//     fontSize:        "12px",
+//     fontFamily:      "inherit",
+//     labels:          { colors: "#64748b" },
+//     markers:         { size: 6 },
+//     itemMargin:      { horizontal: 10, vertical: 4 },
+//   },
+//   dataLabels: { enabled: false },
+//   stroke:     { width: 2.5, curve: "smooth" as const },
+// };
+
+// // ─────────────────────────────────────────────────────────────────────────────
+// // ExpandButton — always-visible top-right button
+// // ─────────────────────────────────────────────────────────────────────────────
+// const ExpandButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
+//   <button
+//     onClick={onClick}
+//     title="Expand"
+//     style={{
+//       position:       "absolute",
+//       top:            8,
+//       right:          8,
+//       cursor:         "pointer",
+      
+//     }}
+//   >
+//     <BsArrowsAngleExpand size={18} color="#475569" />
+//   </button>
+// );
+
+
+// const MODAL_CHART_HEIGHT = 520;
+
+// const ChartModal: React.FC<{
+//   isOpen:   boolean;
+//   onClose:  () => void;
+//   title?:   string;
+//   children: React.ReactNode;
+// }> = ({ isOpen, onClose, title, children }) => {
+//   if (!isOpen) return null;
+//   return (
+//     <>
+//       <style>{`
+//         @keyframes vizlyFadeIn  { from { opacity:0; } to { opacity:1; } }
+//         @keyframes vizlyScaleUp { from { transform:scale(0.95); opacity:0; } to { transform:scale(1); opacity:1; } }
+//       `}</style>
+
+//       {/* Backdrop */}
+//       <div
+//         onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+//         style={{
+//           position:             "fixed",
+//           inset:                0,
+//           backgroundColor:      "rgba(15,23,42,0.45)",
+//           zIndex:               9999,
+//           display:              "flex",
+//           alignItems:           "center",
+//           justifyContent:       "center",
+//           backdropFilter:       "blur(12px)",
+//           WebkitBackdropFilter: "blur(12px)",
+//           animation:            "vizlyFadeIn 0.15s ease-out",
+//         }}
+//       >
+//         {/* Modal panel */}
+//         <div
+//           style={{   
+//             width:                "50%",
+//             height:               "50%",
+//             maxWidth:              500,
+//             maxHeight:             500,
+//             background:           "rgba(255,255,255,0.88)",
+//             backdropFilter:       "blur(24px)",
+//             WebkitBackdropFilter: "blur(24px)",
+//             borderRadius:         "18px",
+//             border:               "1px solid rgba(255,255,255,0.65)",
+//             padding:              "44px 24px 24px",
+//             position:             "relative",
+//             boxShadow:            "0 24px 64px rgba(0,0,0,0.18)",
+//             animation:            "vizlyScaleUp 0.3s cubic-bezier(0.16,1,0.3,1)",
+//             overflow:             "hidden",
+//           }}
+//         >
+//           {/* Title */}
+//           {title && (
+//             <div style={{
+//               position:     "absolute",
+//               top:          14,
+//               left:         18,
+//               fontSize:     13,
+//               fontWeight:   600,
+//               color:        "#475569",
+//               fontFamily:   "inherit",
+//               maxWidth:     "calc(100% - 70px)",
+//               overflow:     "hidden",
+//               textOverflow: "ellipsis",
+//               whiteSpace:   "nowrap",
+//             }}>
+//               {title}
+//             </div>
+//           )}
+
+//           {/* Close */}
+//           <button
+//             onClick={onClose}
+//             aria-label="Close"
+//             style={{
+//               position:       "absolute",
+//               top:            14,
+//               right:          14,
+//               cursor:         "pointer",
+//             }}
+
+//           >
+//             <BsArrowsAngleContract size={18} color="#475569" />
+//           </button>
+
+//           {/* Chart */}
+//           <div style={{ width: "100%", height: MODAL_CHART_HEIGHT }}>
+//             {children}
+//           </div>
+//         </div>
+//       </div>
+//     </>
+//   );
+// };
+
+// // ─────────────────────────────────────────────────────────────────────────────
+// // ChartWrapper — wraps ANY renderer with expand button + modal
+// // ─────────────────────────────────────────────────────────────────────────────
+// const ChartWrapper: React.FC<{
+//   height:    number | string;
+//   titleText: string;
+//   renderChart: (modalHeight: number) => React.ReactNode;
+// }> = ({ height, titleText, renderChart }) => {
+//   const [isOpen, setIsOpen] = useState(false);
+
+//   return (
+//     <>
+//       {/* Card with expand button */}
+//       <div style={{
+//         position: "relative",
+//         width:    "100%",
+//         height:   typeof height === "number" ? `${height}px` : height,
+//         overflow: "hidden",
+//       }}>
+//         {renderChart(0)}
+//         <ExpandButton onClick={() => setIsOpen(true)} />
+//       </div>
+
+//       {/* Modal — renders a fresh instance of the same chart at MODAL_CHART_HEIGHT */}
+//       <ChartModal
+//         isOpen={isOpen}
+//         onClose={() => setIsOpen(false)}
+//         title={titleText}
+//       >
+//         {isOpen && renderChart(MODAL_CHART_HEIGHT)}
+//       </ChartModal>
+//     </>
+//   );
+// };
+
+// // ─────────────────────────────────────────────────────────────────────────────
+// // ApexRenderer — pure chart, no expand logic (handled by ChartWrapper)
+// // ─────────────────────────────────────────────────────────────────────────────
+// const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer"> & { resolvedHeight: number | string }>(
+//   ({ data, type, options = {}, resolvedHeight, title }, ref) => {
+//     const chartRef      = useRef<HTMLDivElement>(null);
+//     const chartInstance = useRef<ApexCharts | null>(null);
+//     const instanceId    = useMemo(() => `vizly-${++_counter}`, []);
+
+//     // ── Type mapper ───────────────────────────────────────────────────────────
+//     const mapApexType = (t: string) => {
+//       const MAP: Record<string, string> = {
+//         column: "bar", rangebar: "rangeBar", boxplot: "boxPlot",
+//         polararea: "polarArea", radialbar: "radialBar", waterfall: "bar",
+//         histogram: "bar", pyramid: "bar", conefunnel: "bar", funnel: "bar",
+//         gauge: "radialBar", nightingale: "polarArea", sunburst: "treemap",
+//         sankey: "bar", calendar: "heatmap", timeline: "rangeBar",
+//       };
+//       return (MAP[String(t).toLowerCase()] ?? t) as any;
+//     };
+
+//     // ── Config builder ────────────────────────────────────────────────────────
+//     const getChartConfig = () => {
+//       const processed = processChartData(type, data);
+//       if (!processed || processed.length === 0) return { series: [] };
+
+//       const { type: dType, series, labels, categories } = processed[0];
+//       const t      = String(dType).toLowerCase();
+//       const engine = chartEngine[t] || "xy";
+
+//       const typeArray  = Array.isArray(type) ? (type as string[]) : [t];
+//       const isMixed    = Array.isArray(data[0]) && typeArray.length > 1;
+//       const mixedTypes = isMixed ? typeArray.map(mt => String(mt).toLowerCase()) : [t];
+
+//       const isCircular    = engine === "circular";
+//       const isRadialBar   = t === "radialbar";
+//       const isPolarArea   = t === "polararea" || t === "nightingale";
+//       const isRadar       = t === "radar";
+//       const isFunnel      = t === "funnel" || t === "conefunnel";
+//       const isPyramid     = t === "pyramid";
+//       const isRange       = engine === "range";
+//       const isGauge       = t === "gauge";
+//       const isWaterfall   = t === "waterfall";
+//       const isCandlestick = t === "candlestick";
+//       const isBoxPlot     = t === "boxplot";
+//       const isBar         = t === "bar" || t === "column";
+//       const isLine        = t === "line";
+//       const isArea        = t === "area";
+
+//       let finalSeries: any = series;
+
+//       if (isCircular || isPolarArea) {
+//         if (Array.isArray(series) && series.length > 0) {
+//           if (typeof series[0] === "object" && series[0]?.data)
+//             finalSeries = series[0].data;
+//           else if (typeof series[0] === "object" && !Array.isArray(series[0]))
+//             finalSeries = series.map((item: any) => Number(item.y ?? item.value ?? 0));
+//         }
+//       }
+//       if (isRadialBar && Array.isArray(series) && series.length > 0) {
+//         if (typeof series[0] === "object" && series[0]?.data)
+//           finalSeries = series[0].data;
+//         else if (typeof series[0] === "object" && !Array.isArray(series[0]))
+//           finalSeries = series.map((item: any) => Number(item.y ?? item.value ?? 0));
+//       }
+//       if (isGauge) {
+//         finalSeries = (Array.isArray(finalSeries) ? finalSeries : [finalSeries])
+//           .map((v: any) => { const n = Number(v); return isNaN(n) ? 0 : Math.min(100, Math.max(0, n)); });
+//       }
+//       if (isRadar && Array.isArray(series) && series.length > 0) {
+//         const s0 = series[0];
+//         if (s0?.data && Array.isArray(s0.data) && typeof s0.data[0] === "number") {
+//           finalSeries = [{
+//             name: s0.name ?? "Series 1",
+//             data: s0.data.map((val: number, i: number) => ({
+//               x: categories[i] ?? labels[i] ?? `Item ${i + 1}`, y: val,
+//             })),
+//           }];
+//         }
+//       }
+
+//       const allXY =
+//         Array.isArray(finalSeries) && finalSeries.length > 0 &&
+//         Array.isArray(finalSeries[0]?.data) &&
+//         finalSeries[0]?.data?.[0] !== null &&
+//         typeof finalSeries[0]?.data?.[0] === "object" &&
+//         "x" in (finalSeries[0]?.data?.[0] ?? {});
+
+//       const resolvedLabels: string[] =
+//         isCircular || isRadialBar || isPolarArea
+//           ? (labels?.length ? labels : categories?.length ? categories : [])
+//           : [];
+
+//       const resolvedCategories: string[] = (() => {
+//         if (allXY || isRadar || isCircular || isPolarArea || isRadialBar || isFunnel || isRange) return [];
+//         return categories?.length ? categories : labels?.length ? labels : [];
+//       })();
+
+//       const xAxisType = isCandlestick ? "datetime"
+//         : (isRange && !isBoxPlot
+//             ? (Array.isArray(series) && looksLikeDate(String(series[0]?.data?.[0]?.x ?? "")) ? "datetime" : "numeric")
+//             : "category");
+
+//       const markerSize  = isLine ? 4 : isArea ? 3 : 0;
+//       const strokeWidth = isBar || isGauge || isCircular || isPolarArea || isRadialBar ? 0 : 2.5;
+
+//       return {
+//         ...options,
+//         colors: options.colors ?? APEX_COLORS,
+//         chart: {
+//           id:         `vizly-${instanceId}`,
+//           type:       mapApexType(t),
+//           height:     "100%",
+//           width:      "100%",
+//           stacked:    options.stacked ?? false,
+//           background: "transparent",
+//           fontFamily: "inherit",
+//           animations: { enabled: true, speed: 700, animateGradually: { enabled: true, delay: 80 } },
+//           toolbar: {
+//             show: true,
+//             tools: { download: true, zoom: true, zoomin: true, zoomout: true, pan: true, reset: true, customIcons: [] },
+//             export: { csv: { filename: "chart-data" }, svg: { filename: "chart" }, png: { filename: "chart" } },
+//           },
+//           dropShadow: { enabled: false },
+//           ...options.chart,
+//         },
+//         grid:   { ...APEX_THEME.grid,  ...options.grid  },
+//         stroke: {
+//           width: isMixed
+//             ? mixedTypes.map(mt => mt === "bar" || mt === "column" ? 0 : 2.5)
+//             : (isBar || isCircular || isPolarArea || isRadialBar || isGauge ? 0 : strokeWidth),
+//           curve: "smooth", lineCap: "round", ...options.stroke,
+//         },
+//         markers: {
+//           size: isMixed ? mixedTypes.map(mt => mt === "line" ? 4 : mt === "area" ? 3 : 0) : markerSize,
+//           strokeWidth: 0,
+//           hover: { size: isMixed ? mixedTypes.map(mt => mt === "line" ? 6 : mt === "area" ? 5 : 0) : markerSize + 2 },
+//           ...options.markers,
+//         },
+//         fill: {
+//           opacity: isMixed ? mixedTypes.map(mt => mt === "area" ? 0.18 : 1) : isArea ? [0.18, 1] : 1,
+//           ...options.fill,
+//         },
+//         series:   finalSeries,
+//         labels:   resolvedLabels,
+//         xaxis:    { type: xAxisType, categories: resolvedCategories, position: "bottom", ...APEX_THEME.xaxis, ...options.xaxis },
+//         yaxis:    { ...APEX_THEME.yaxis,  ...options.yaxis  },
+//         legend:   { ...APEX_THEME.legend, ...options.legend },
+//         dataLabels: { enabled: false, ...options.dataLabels },
+//         plotOptions: {
+//           ...options.plotOptions,
+//           bar: {
+//             horizontal:   !isMixed && (isFunnel || t === "rangebar" || t === "timeline" || isPyramid),
+//             isFunnel:     isFunnel || t === "conefunnel",
+//             distributed:  isFunnel || t === "conefunnel" || isWaterfall,
+//             isFunnelPlot: t === "conefunnel",
+//             borderRadius: isBar ? 4 : 0,
+//             columnWidth:  "58%",
+//             barHeight:    "60%",
+//             ...options.plotOptions?.bar,
+//             ...(isWaterfall && !options.plotOptions?.bar?.colors ? {
+//               colors: { ranges: [{ from: -Infinity, to: -0.001, color: "#f43f5e" }, { from: 0, to: Infinity, color: "#10b981" }] },
+//             } : {}),
+//           },
+//           radialBar: isGauge
+//             ? { startAngle: -135, endAngle: 135, hollow: { size: "58%", background: "transparent" }, track: { background: "#f1f5f9", strokeWidth: "100%", margin: 4 }, dataLabels: { name: { show: true, offsetY: -10, fontSize: "13px", color: "#64748b" }, value: { show: true, fontSize: "26px", fontWeight: 700, color: "#0f172a", formatter: (v: number) => `${v}%` } }, ...options.plotOptions?.radialBar }
+//             : { hollow: { size: "30%", background: "transparent" }, track: { background: "#f1f5f9", strokeWidth: "100%" }, dataLabels: { name: { show: true }, value: { show: true }, total: { show: true, label: "Total" } }, ...options.plotOptions?.radialBar },
+//           pie: { donut: { size: "55%", labels: { show: true, total: { show: true, label: "Total", fontSize: "13px", color: "#64748b", fontFamily: "inherit" } } }, ...options.plotOptions?.pie },
+//           heatmap: { enableShades: true, colorScale: { ranges: options.plotOptions?.heatmap?.colorScale?.ranges || [] } },
+//         },
+//         title: {
+//           text:   (typeof title === "string" ? title : (title as any)?.text ?? options.title?.text) ?? "",
+//           align:  typeof title === "object" ? (title as any).align : options.title?.align ?? "left",
+//           style:  { fontSize: "15px", fontWeight: "600", fontFamily: "inherit", color: "#1e293b", ...(typeof title === "object" ? (title as any).style : {}) },
+//           margin: 12, offsetY: 4, ...options.title,
+//         },
+//         tooltip: { ...APEX_THEME.tooltip, shared: !isRange && !isBoxPlot, intersect: isRange || isBoxPlot, ...options.tooltip },
+//         theme: { mode: "light" as const },
+//       };
+//     };
+
+//     // ── Mount chart ───────────────────────────────────────────────────────────
+//     useEffect(() => {
+//       let isMounted = true;
+//       let observer: ResizeObserver | null = null;
+
+//       const initChart = async (el: HTMLDivElement) => {
+//         if (chartInstance.current) { await chartInstance.current.destroy(); chartInstance.current = null; }
+//         if (!isMounted || !el) return;
+//         el.innerHTML = "";
+//         const chart = new ApexCharts(el, getChartConfig());
+//         chartInstance.current = chart;
+//         if (!isMounted) { chart.destroy(); return; }
+//         await chart.render();
+//       };
+
+//       const tryInit = () => {
+//         const el = chartRef.current;
+//         if (!el) return;
+//         const { width, height: h } = el.getBoundingClientRect();
+//         if (width > 0 && h > 0) { observer?.disconnect(); initChart(el); }
+//       };
+
+//       if (chartRef.current) {
+//         const { width, height: h } = chartRef.current.getBoundingClientRect();
+//         if (width > 0 && h > 0) initChart(chartRef.current);
+//         else { observer = new ResizeObserver(tryInit); observer.observe(chartRef.current); }
+//       }
+
+//       return () => { isMounted = false; observer?.disconnect(); chartInstance.current?.destroy(); };
+//     // eslint-disable-next-line react-hooks/exhaustive-deps
+//     }, [data, type, options, title, resolvedHeight]);
+
+//     useImperativeHandle(ref, () => ({
+//       zoomIn:           () => chartInstance.current?.zoomX(20, 80),
+//       zoomOut:          () => chartInstance.current?.resetSeries(),
+//       reset:            () => chartInstance.current?.resetSeries(),
+//       toggleFullscreen: () => {},
+//     }));
+
+//     return <div ref={chartRef} style={{ height: "100%", width: "100%", overflow: "hidden" }} />;
+//   }
+// );
+
+// // ─────────────────────────────────────────────────────────────────────────────
+// // VizlyChart — public API
+// // Adds universal expand button + modal to every renderer
+// // ─────────────────────────────────────────────────────────────────────────────
+// const VizlyChart = forwardRef<VizlyRef, VizlyProps>(
+//   ({ data, type, options = {}, height = 350, title, renderer = "apexcharts" }, ref) => {
+
+//     const apexRef    = useRef<VizlyRef>(null);
+//     const titleText  = typeof title === "string" ? title : (title as any)?.text ?? "";
+
+//     useImperativeHandle(ref, () => ({
+//       zoomIn:           () => apexRef.current?.zoomIn(),
+//       zoomOut:          () => apexRef.current?.zoomOut(),
+//       reset:            () => apexRef.current?.reset(),
+//       toggleFullscreen: () => {},
+//     }));
+
+//     // ── Recharts ──────────────────────────────────────────────────────────────
+//     if (renderer === "recharts") {
+//       return (
+//         <ChartWrapper height={height} titleText={titleText} renderChart={mh => (
+//           <VizlyRecharts
+//             data={data} type={type} options={options}
+//             height={mh > 0 ? mh : height}
+//             title={title}
+//           />
+//         )} />
+//       );
+//     }
+
+//     // ── ECharts ───────────────────────────────────────────────────────────────
+//     if (renderer === "echarts") {
+//       return (
+//         <ChartWrapper height={height} titleText={titleText} renderChart={mh => (
+//           <VizlyECharts
+//             data={data} type={type} options={options}
+//             height={mh > 0 ? mh : height}
+//             title={title}
+//           />
+//         )} />
+//       );
+//     }
+
+//     // ── Plotly ────────────────────────────────────────────────────────────────
+//     if (renderer === "plotlycharts") {
+//       return (
+//         <ChartWrapper height={height} titleText={titleText} renderChart={mh => (
+//           <VizlyPlotly
+//             data={data} type={type} options={options}
+//             height={mh > 0 ? mh : height}
+//             title={title}
+//           />
+//         )} />
+//       );
+//     }
+
+//     // ── ApexCharts (default) ──────────────────────────────────────────────────
+//     return (
+//       <ChartWrapper height={height} titleText={titleText} renderChart={mh => (
+//         <ApexRenderer
+//           ref={mh > 0 ? undefined : apexRef}
+//           data={data} type={type} options={options}
+//           resolvedHeight={mh > 0 ? mh : height}
+//           title={title}
+//         />
+//       )} />
+//     );
+//   }
+// );
+
+// export default VizlyChart;
 
 
 // import React, {
