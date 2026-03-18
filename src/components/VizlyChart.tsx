@@ -112,7 +112,7 @@ const FloatingExpandButton: React.FC<{ onClick: () => void }> = ({ onClick }) =>
 // ─────────────────────────────────────────────────────────────────────────────
 // ChartModal — shared glassmorphism modal for ALL renderers
 // ─────────────────────────────────────────────────────────────────────────────
-const MODAL_CHART_HEIGHT = 480;
+const MODAL_CHART_HEIGHT = 380;
 
 const ChartModal: React.FC<{
   isOpen:   boolean;
@@ -150,16 +150,16 @@ const ChartModal: React.FC<{
         {/* Panel */}
         <div
           style={{
-            height:               "50%",
-            maxHeight:             500,
-            width:                "50%",
+            height:               400,
+            maxHeight:            500,
+            width:                400,
             maxWidth:             500,
             background:           "rgba(255,255,255,0.88)",
             backdropFilter:       "blur(24px)",
             WebkitBackdropFilter: "blur(24px)",
             borderRadius:         "18px",
             border:               "1px solid rgba(255,255,255,0.65)",
-            padding:              "44px 24px 24px",
+            padding:              "30px 16px 16px",
             position:             "relative",
             boxShadow:            "0 24px 64px rgba(0,0,0,0.18)",
             animation:            "vizlyScaleUp 0.3s cubic-bezier(0.16,1,0.3,1)",
