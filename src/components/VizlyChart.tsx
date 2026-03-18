@@ -112,7 +112,7 @@ const FloatingExpandButton: React.FC<{ onClick: () => void }> = ({ onClick }) =>
 // ─────────────────────────────────────────────────────────────────────────────
 // ChartModal — shared glassmorphism modal for ALL renderers
 // ─────────────────────────────────────────────────────────────────────────────
-const MODAL_CHART_HEIGHT = 380;
+const MODAL_CHART_HEIGHT = 480;
 
 const ChartModal: React.FC<{
   isOpen:   boolean;
@@ -150,10 +150,10 @@ const ChartModal: React.FC<{
         {/* Panel */}
         <div
           style={{
-            height:               400,
-            maxHeight:            500,
-            width:                400,
-            maxWidth:             500,
+            // height:               400,
+            // maxHeight:            500,
+            // width:                400,
+            // maxWidth:             500,
             background:           "rgba(255,255,255,0.88)",
             backdropFilter:       "blur(24px)",
             WebkitBackdropFilter: "blur(24px)",
@@ -352,7 +352,7 @@ const ApexRenderer = forwardRef<
             customIcons: forModal ? [] : [
               {
                 icon:  EXPAND_ICON_SVG,
-                index: 6,           // immediately after the download icon
+                index: -1,           // immediately after the download icon
                 title: "Expand",
                 class: "vizly-expand-icon",
                 click: () => setIsModalOpen(true),
