@@ -54,7 +54,10 @@ const EXPAND_ICON_SVG = `<svg
   width="12"
   height="12"
   fill="#6b7280"
-  style="display:block;margin-top:5px;margin-left:1px"
+  stroke="#4b5563"
+  stroke-width="0.8"
+  stroke-linejoin="round"
+  style="display:block;margin-top:5px;margin-left:2px"
 >
   <path
     fill-rule="evenodd"
@@ -195,7 +198,7 @@ const ChartModal: React.FC<{
               cursor:         "pointer",
             }}
           >
-            <BsArrowsAngleContract size={18} color="#475569" />
+            <BsArrowsAngleContract size={14} color="#475569" />
           </button>
 
           {/* Chart content */}
