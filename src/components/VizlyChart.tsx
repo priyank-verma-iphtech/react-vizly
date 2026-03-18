@@ -36,7 +36,10 @@ export interface VizlyRef {
 }
 
 // ─── Inline SVG string for ApexCharts toolbar (no external dependency) ────────
-const EXPAND_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px;display:block">
+const EXPAND_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16"
+ height="16" viewBox="0 0 24 24" fill="none" stroke="#6b7280" 
+ stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+  style="margin-top:4px;display:block">
   <path d="M8 3H5a2 2 0 0 0-2 2v3"/>
   <path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
   <path d="M3 16v3a2 2 0 0 0 2 2h3"/>
@@ -98,40 +101,18 @@ const FloatingExpandButton: React.FC<{ onClick: () => void }> = ({ onClick }) =>
       position:       "absolute",
       top:            8,
       right:          8,
-      width:          28,
-      height:         28,
-      borderRadius:   "7px",
-      border:         "1px solid rgba(0,0,0,0.08)",
-      background:     "rgba(255,255,255,0.92)",
-      backdropFilter: "blur(4px)",
       cursor:         "pointer",
-      display:        "flex",
-      alignItems:     "center",
-      justifyContent: "center",
-      boxShadow:      "0 1px 4px rgba(0,0,0,0.10)",
-      zIndex:         20,
-      transition:     "all 0.15s ease",
-      opacity:        0.75,
     }}
-    onMouseEnter={e => {
-      e.currentTarget.style.opacity    = "1";
-      e.currentTarget.style.transform  = "scale(1.1)";
-      e.currentTarget.style.background = "#fff";
-    }}
-    onMouseLeave={e => {
-      e.currentTarget.style.opacity    = "0.75";
-      e.currentTarget.style.transform  = "scale(1)";
-      e.currentTarget.style.background = "rgba(255,255,255,0.92)";
-    }}
+   
   >
-    <BsArrowsAngleExpand size={12} color="#475569" />
+    <BsArrowsAngleExpand size={18} color="#475569" />
   </button>
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ChartModal — shared glassmorphism modal for ALL renderers
 // ─────────────────────────────────────────────────────────────────────────────
-const MODAL_CHART_HEIGHT = 520;
+const MODAL_CHART_HEIGHT = 480;
 
 const ChartModal: React.FC<{
   isOpen:   boolean;
@@ -139,14 +120,6 @@ const ChartModal: React.FC<{
   title?:   string;
   children: React.ReactNode;
 }> = ({ isOpen, onClose, title, children }) => {
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose]);
-
   if (!isOpen) return null;
 
   return (
@@ -160,7 +133,7 @@ const ChartModal: React.FC<{
 
       {/* Backdrop */}
       <div
-        onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+       
         style={{
           position:             "fixed",
           inset:                0,
@@ -177,8 +150,10 @@ const ChartModal: React.FC<{
         {/* Panel */}
         <div
           style={{
-            width:                "76%",
-            maxWidth:             980,
+            height:               "50%",
+            maxHeight:             500,
+            width:                "50%",
+            maxWidth:             500,
             background:           "rgba(255,255,255,0.88)",
             backdropFilter:       "blur(24px)",
             WebkitBackdropFilter: "blur(24px)",
@@ -218,25 +193,7 @@ const ChartModal: React.FC<{
               position:       "absolute",
               top:            10,
               right:          12,
-              width:          28,
-              height:         28,
-              borderRadius:   "50%",
-              border:         "1px solid rgba(0,0,0,0.08)",
-              background:     "rgba(255,255,255,0.9)",
               cursor:         "pointer",
-              display:        "flex",
-              alignItems:     "center",
-              justifyContent: "center",
-              boxShadow:      "0 1px 4px rgba(0,0,0,0.08)",
-              transition:     "all 0.15s",
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.transform  = "scale(1.1)";
-              e.currentTarget.style.background = "#fff";
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform  = "scale(1)";
-              e.currentTarget.style.background = "rgba(255,255,255,0.9)";
             }}
           >
             <BsArrowsAngleContract size={12} color="#475569" />
@@ -395,7 +352,7 @@ const ApexRenderer = forwardRef<
             customIcons: forModal ? [] : [
               {
                 icon:  EXPAND_ICON_SVG,
-                index: -1,           // immediately after the download icon
+                index: 6,           // immediately after the download icon
                 title: "Expand",
                 class: "vizly-expand-icon",
                 click: () => setIsModalOpen(true),
