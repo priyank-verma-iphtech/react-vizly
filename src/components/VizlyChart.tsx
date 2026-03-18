@@ -147,7 +147,8 @@ const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
       };
       return (MAP[s] ?? s) as any;
     };
-
+    
+    
     // ── Config builder ────────────────────────────────────────────────────────
     const getChartConfig = (isModal: boolean) => {
       const processed = processChartData(type, data);
@@ -155,6 +156,11 @@ const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
 
       const { type: dType, series, labels, categories } = processed[0];
       const t      = String(dType).toLowerCase();
+      const typeArray = Array.isArray(type) ? (type as string[]) : [t];
+      const isMixed = Array.isArray(data[0]) && typeArray.length > 1;
+      const mixedTypes = isMixed
+      ? typeArray.map(t => String(t).toLowerCase())
+      : [t];
       const engine = chartEngine[t] || "xy";
 
       const isCircular    = engine === "circular";
@@ -318,24 +324,39 @@ const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
 
         // Stroke
         stroke: {
-          width:  isBar || isCircular || isPolarArea || isRadialBar || isGauge ? 0 : strokeWidth,
-          curve:  "smooth",
+          width: isMixed
+            ? mixedTypes.map(mt =>
+                mt === "bar" || mt === "column" ? 0 : 2.5
+              )
+            : (isBar || isCircular || isPolarArea || isRadialBar || isGauge ? 0 : strokeWidth),
+          curve:   "smooth",
           lineCap: "round",
           ...options.stroke,
         },
 
         // Markers
         markers: {
-          size:         markerSize,
-          strokeWidth:  0,
-          hover:        { size: markerSize + 2 },
+          size: isMixed
+            ? mixedTypes.map(mt =>
+                mt === "line" ? 4 : mt === "area" ? 3 : 0
+              )
+            : markerSize,
+          strokeWidth: 0,
+          hover: {
+            size: isMixed
+              ? mixedTypes.map(mt =>
+                  mt === "line" ? 6 : mt === "area" ? 5 : 0
+                )
+              : markerSize + 2,
+          },
           ...options.markers,
         },
 
         // Fill
         fill: {
-          opacity: isArea ? [0.18, 1] : 1,
-          type:    isArea ? "solid" : undefined,
+          opacity: isMixed
+            ? mixedTypes.map(mt => mt === "area" ? 0.18 : 1)
+            : isArea ? [0.18, 1] : 1,
           ...options.fill,
         },
 
@@ -347,6 +368,7 @@ const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
         xaxis: {
           type:        xAxisType,
           categories:  resolvedCategories,
+          position:   "bottom", 
           ...APEX_THEME.xaxis,
           ...options.xaxis,
         },
@@ -373,7 +395,7 @@ const ApexRenderer = forwardRef<VizlyRef, Omit<VizlyProps, "renderer">>(
         plotOptions: {
           ...options.plotOptions,
           bar: {
-            horizontal:    isFunnel || t === "rangebar" || t === "timeline" || isPyramid,
+            horizontal: !isMixed && (isFunnel || t === "rangebar" || t === "timeline" || isPyramid),
             isFunnel:      isFunnel || t === "conefunnel",
             distributed:   isFunnel || t === "conefunnel" || isWaterfall,
             isFunnelPlot:  t === "conefunnel",
