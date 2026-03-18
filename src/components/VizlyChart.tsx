@@ -51,13 +51,13 @@ export interface VizlyRef {
 const EXPAND_ICON_SVG = `<svg
   xmlns="http://www.w3.org/2000/svg"
   viewBox="0 0 16 16"
-  width="12"
-  height="12"
+  width="14"
+  height="14"
   fill="#6b7280"
   stroke="#4b5563"
   stroke-width="0.8"
   stroke-linejoin="round"
-  style="display:block;margin-top:5px;margin-left:2px"
+  style="display:block;margin-top:5px;margin-left:4px"
 >
   <path
     fill-rule="evenodd"
@@ -198,7 +198,7 @@ const ChartModal: React.FC<{
               cursor:         "pointer",
             }}
           >
-            <BsArrowsAngleContract size={14} color="#475569" />
+            <BsArrowsAngleContract size={18} color="#475569" />
           </button>
 
           {/* Chart content */}
