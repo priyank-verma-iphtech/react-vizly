@@ -36,16 +36,18 @@ export interface VizlyRef {
 }
 
 // ─── Inline SVG string for ApexCharts toolbar (no external dependency) ────────
-const EXPAND_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16"
- height="16" viewBox="0 0 16 16" fill="currentColor" 
+const EXPAND_ICON_SVG = `<svg stroke="currentColor"
+fill="currentColor"
  stroke-width="0"
-  style="margin-top:4px;margin-left:2px;display:block">
-  <path fill-rule="evenodd"
-  d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.
-  5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5
-   0 0 0 0-.707m4.344-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0
-    0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707"></path>
-</svg>`;
+ style="margin-top:4px;margin-left:2px;display:block">
+  viewBox="0 0 16 16"
+   height="1em" width="1em"
+    xmlns="http://www.w3.org/2000/svg">
+     <path fill-rule="evenodd" 
+     d="M5.828 10.172a.5.5 0 0 0-.707 0l-4.096 4.096V11.5a.5.5 0 0 0-1 0v3.975a.5.5 0 0 0 .5.5H4.5a.5.5 0 0 0 0-1H1.732l4.096-4.096a.5.5 0 0 0 0-.707m4.344-4.344a.5.5 0 0 0 .707 0l4.096-4.096V4.5a.5.5 0 1 0 1 0V.525a.5.5 0 0 0-.5-.5H11.5a.5.5 0 0 0 0 1h2.768l-4.096 4.096a.5.5 0 0 0 0 .707">
+ </path>
+ </svg>`;
+
 
 
 // ─── Shared ApexCharts theme ──────────────────────────────────────────────────
@@ -167,24 +169,7 @@ const ChartModal: React.FC<{
             overflow:             "hidden",
           }}
         >
-          {/* Title */}
-          {title && (
-            <div style={{
-              position:     "absolute",
-              top:          14,
-              left:         20,
-              fontSize:     13,
-              fontWeight:   600,
-              color:        "#475569",
-              fontFamily:   "inherit",
-              maxWidth:     "calc(100% - 70px)",
-              overflow:     "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace:   "nowrap",
-            }}>
-              {title}
-            </div>
-          )}
+          
 
           {/* Close button */}
           <button
@@ -197,7 +182,7 @@ const ChartModal: React.FC<{
               cursor:         "pointer",
             }}
           >
-            <BsArrowsAngleContract size={12} color="#475569" />
+            <BsArrowsAngleContract size={18} color="#475569" />
           </button>
 
           {/* Chart content */}
